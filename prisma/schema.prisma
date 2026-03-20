@@ -84,3 +84,14 @@ model PitchRecord {
   strikeouts Int
   homeRuns   Int
 }
+
+/// REST `/api/scoreboard/game` — 프론트 `Game` JSON 스냅샷 (부모 앱 + 이 레포 API 공유)
+model ScoreboardGame {
+  id        Int      @id @default(autoincrement())
+  ownerId   String
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("scoreboard_games")
+}

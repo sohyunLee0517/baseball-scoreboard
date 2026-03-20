@@ -10,15 +10,19 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "server:dev": "tsx --env-file=.env server/index.ts",
+    "server:dev": "tsx -r dotenv/config server/index.ts",
     "server:build": "tsc -p tsconfig.server.json",
-    "server": "node --env-file=.env -e \"require('./dist/server/index.js')\""
+    "server": "node -r dotenv/config dist/server/index.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:apply:scoreboard": "node scripts/apply-scoreboard-table.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "axios": "^1.6.0",
     "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "pg": "^8.20.0",
     "prisma": "^7.5.0",

@@ -1,8 +1,15 @@
 import axios from "axios";
 import type { CreateGamePayload, Game, UpdateGamePayload } from "./types";
 
+/** 부모 앱·별도 API 서버 URL. 미설정 시 같은 origin의 `/api/scoreboard/game` (Vite mock 또는 리버스 프록시). */
+const baseURL =
+  (import.meta.env.VITE_SCOREBOARD_API_BASE as string | undefined)?.replace(
+    /\/$/,
+    "",
+  ) ?? "/api/scoreboard/game";
+
 const api = axios.create({
-  baseURL: "/api/scoreboard/game",
+  baseURL,
 });
 
 export const getGames = async (ownerId: string): Promise<Game[]> => {
