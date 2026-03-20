@@ -21,3 +21,5 @@ pnpm-debug.log*
 
 # Secrets (never commit)
 google-key.json
+
+/src/generated/prisma

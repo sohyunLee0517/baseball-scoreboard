@@ -1,0 +1,98 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum BatResult {
+  SINGLE
+  DOUBLE
+  TRIPLE
+  HOME_RUN
+  INFIELD_HIT
+  GROUND_OUT_1
+  GROUND_OUT_3
+  GROUND_OUT_4
+  GROUND_OUT_5
+  GROUND_OUT_6
+  FLY_OUT_7
+  FLY_OUT_8
+  FLY_OUT_9
+  FLY_OUT_78
+  FLY_OUT_89
+  LINE_OUT_3
+  LINE_OUT_4
+  LINE_OUT_5
+  LINE_OUT_6
+  STRIKEOUT
+  WALK
+  HIT_BY_PITCH
+  REACH_ON_ERROR
+  SACRIFICE_BUNT
+  SACRIFICE_FLY
+  DOUBLE_PLAY
+  FIELDERS_CHOICE
+}
+
+model Match {
+  id           String        @id @default(uuid())
+  date         DateTime
+  homeTeamId   String
+  awayTeamId   String
+  homeTeamName String
+  awayTeamName String
+  innings      Inning[]
+  batRecords   BatRecord[]
+  pitRecords   PitchRecord[]
+  createdAt    DateTime      @default(now())
+}
+
+model Inning {
+  id        String @id @default(uuid())
+  matchId   String
+  match     Match  @relation(fields: [matchId], references: [id])
+  inningNo  Int
+  homeScore Int
+  awayScore Int
+}
+
+model BatRecord {
+  id            String         @id @default(uuid())
+  matchId       String
+  match         Match          @relation(fields: [matchId], references: [id])
+  playerId      String
+  playerName    String
+  position      String
+  batOrder      Int
+  atBats        Int
+  hits          Int
+  homeRuns      Int
+  walks         Int
+  strikeouts    Int
+  inningResults InningResult[]
+}
+
+model InningResult {
+  id          String    @id @default(uuid())
+  batRecordId String
+  batRecord   BatRecord @relation(fields: [batRecordId], references: [id])
+  inningNo    Int
+  result      BatResult
+}
+
+model PitchRecord {
+  id         String @id @default(uuid())
+  matchId    String
+  match      Match  @relation(fields: [matchId], references: [id])
+  playerId   String
+  playerName String
+  innings    Float
+  hits       Int
+  runs       Int
+  earnedRuns Int
+  walks      Int
+  strikeouts Int
+  homeRuns   Int
+}
