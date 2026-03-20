@@ -1,6 +1,11 @@
 import React from "react";
+import { BatResult, BAT_RESULT_LABEL_KO } from "../constants/batResult";
 
 const INNINGS = 9;
+
+const BAT_RESULT_ORDER = Object.keys(BatResult) as (keyof typeof BatResult)[];
+
+const batResultValueSet = new Set<string>(Object.values(BatResult));
 
 export interface PlayerInningRecordsModalProps {
   open: boolean;
@@ -48,27 +53,39 @@ export const PlayerInningRecordsModal: React.FC<
 
         <div className="px-5 py-4 overflow-y-auto space-y-2">
           <p className="text-xs text-gray-500 mb-3">
-            1회부터 9회까지 타석·주루 등 결과를 입력하세요.
+            1회부터 9회까지 타석 결과를 선택하세요.
           </p>
-          {Array.from({ length: INNINGS }, (_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <span className="w-11 shrink-0 text-sm font-bold text-slate-600 tabular-nums">
-                {i + 1}회
-              </span>
-              <input
-                type="text"
-                value={values[i] ?? ""}
-                onChange={(e) => {
-                  const next = [...values];
-                  while (next.length < INNINGS) next.push("");
-                  next[i] = e.target.value;
-                  onChange(next.slice(0, INNINGS));
-                }}
-                className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
-                placeholder="예: 삼진, 1땅, 볼넷"
-              />
-            </div>
-          ))}
+          {Array.from({ length: INNINGS }, (_, i) => {
+            const raw = values[i] ?? "";
+            const isLegacy = raw !== "" && !batResultValueSet.has(raw);
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <span className="w-11 shrink-0 text-sm font-bold text-slate-600 tabular-nums">
+                  {i + 1}회
+                </span>
+                <select
+                  value={raw}
+                  onChange={(e) => {
+                    const next = [...values];
+                    while (next.length < INNINGS) next.push("");
+                    next[i] = e.target.value;
+                    onChange(next.slice(0, INNINGS));
+                  }}
+                  className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 bg-white"
+                >
+                  <option value="">선택</option>
+                  {isLegacy ? (
+                    <option value={raw}>{raw} (기존)</option>
+                  ) : null}
+                  {BAT_RESULT_ORDER.map((key) => (
+                    <option key={key} value={BatResult[key]}>
+                      {BAT_RESULT_LABEL_KO[key]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
         </div>
 
         <div className="px-5 py-4 border-t border-gray-100 flex gap-2 justify-end bg-gray-50/80">

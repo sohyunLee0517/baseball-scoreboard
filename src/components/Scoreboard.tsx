@@ -5,6 +5,7 @@ import { useMyTeam } from "../my-team-store";
 import { getMyTeamDisplayName } from "../myTeamDisplayName";
 import { parseSchoolPlayerId } from "../school-api";
 import { normalizeRosterSchoolPlayerIds } from "../normalizeRosterSchoolPlayerIds";
+import { batResultCodeToLabelKo } from "../constants/batResult";
 import { PlayerInningRecordsModal } from "./PlayerInningRecordsModal";
 
 function padInningRecords(records?: string[]): string[] {
@@ -13,11 +14,12 @@ function padInningRecords(records?: string[]): string[] {
   return out.slice(0, 9);
 }
 
-/** 모달에 저장한 회별 기록을 쉼표로 이어 한 줄 요약 */
+/** 모달에 저장한 회별 기록을 쉼표로 이어 한 줄 요약 (영문 코드는 한글로 표시) */
 function summarizeInningRecords(records?: string[]): string {
   return (records ?? [])
     .map((s) => s?.trim())
     .filter(Boolean)
+    .map((s) => batResultCodeToLabelKo(s))
     .join(", ");
 }
 
@@ -202,10 +204,10 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
     try {
       const updatedGame = await updateGame(game.id!, {
         ...game,
-        homeScore: homeLine.runs,
-        awayScore: awayLine.runs,
-        awayLineScoreboard: awayLine,
-        homeLineScoreboard: homeLine,
+        homeScore: homeRunsFromInnings,
+        awayScore: awayRunsFromInnings,
+        awayLineScoreboard: { ...awayLine, runs: awayRunsFromInnings },
+        homeLineScoreboard: { ...homeLine, runs: homeRunsFromInnings },
         innings,
         players,
       });
@@ -243,6 +245,22 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
       }
     );
   };
+
+  /** 원정 = 각 이닝 초 득점 합, 홈 = 각 이닝 말 득점 합 */
+  const awayRunsFromInnings = useMemo(
+    () =>
+      innings
+        .filter((inn) => inn.topBottom === "TOP")
+        .reduce((s, inn) => s + (inn.runs ?? 0), 0),
+    [innings],
+  );
+  const homeRunsFromInnings = useMemo(
+    () =>
+      innings
+        .filter((inn) => inn.topBottom === "BOTTOM")
+        .reduce((s, inn) => s + (inn.runs ?? 0), 0),
+    [innings],
+  );
 
   const reorderRosterPlayer = (from: number, to: number) => {
     setPlayers((prev) => {
@@ -366,18 +384,12 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
             </div>
           ))}
           <div className=" border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center min-h-[3.5rem]">
-            <input
-              type="number"
-              min={0}
-              className="w-full max-w-[4.5rem] bg-transparent text-center font-mono text-3xl font-black text-amber-400 focus:bg-blue-900/40 outline-none rounded px-1"
-              value={awayLine.runs}
-              onChange={(e) =>
-                setAwayLine((prev) => ({
-                  ...prev,
-                  runs: parseInt(e.target.value, 10) || 0,
-                }))
-              }
-            />
+            <span
+              className="w-full max-w-[4.5rem] inline-block text-center font-mono text-3xl font-black text-amber-400 tabular-nums"
+              aria-label={`원정 득점 합계 ${awayRunsFromInnings}`}
+            >
+              {awayRunsFromInnings}
+            </span>
           </div>
           <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
             <input
@@ -450,18 +462,12 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
             </div>
           ))}
           <div className="border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center min-h-[3.5rem]">
-            <input
-              type="number"
-              min={0}
-              className="w-full max-w-[4.5rem] bg-transparent text-center font-mono text-3xl font-black text-amber-400 focus:bg-blue-900/40 outline-none rounded px-1"
-              value={homeLine.runs}
-              onChange={(e) =>
-                setHomeLine((prev) => ({
-                  ...prev,
-                  runs: parseInt(e.target.value, 10) || 0,
-                }))
-              }
-            />
+            <span
+              className="w-full max-w-[4.5rem] inline-block text-center font-mono text-3xl font-black text-amber-400 tabular-nums"
+              aria-label={`홈 득점 합계 ${homeRunsFromInnings}`}
+            >
+              {homeRunsFromInnings}
+            </span>
           </div>
           <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
             <input
@@ -541,9 +547,6 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                           {recordsSummary}
                         </span>
                       ) : null}
-                    </div>
-                    <div className="text-[10px] text-gray-400 uppercase font-medium">
-                      {p.position} • {p.team}
                     </div>
                   </button>
                   <div className="flex shrink-0 flex-col gap-0.5">

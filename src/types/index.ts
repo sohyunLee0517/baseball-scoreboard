@@ -30,3 +30,5 @@ export type {
   CreateGamePlayerBody,
   UpdateGamePayload,
 } from "./scoreboard-api";
+
+export { BatResult, BAT_RESULT_LABEL_KO } from "../constants/batResult";
