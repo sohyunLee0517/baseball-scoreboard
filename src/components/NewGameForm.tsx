@@ -5,7 +5,9 @@ import { buildSchoolPlayerByIdMap, useMyTeam } from "../my-team-store";
 import { getMyTeamDisplayName } from "../myTeamDisplayName";
 import { useOpponentTeamInput } from "../hooks/useOpponentTeamInput";
 import { useMyTeamHomeAway } from "../hooks/useMyTeamHomeAway";
+import { useEntryRosterSelection } from "../hooks/useEntryRosterSelection";
 import { useTeamEntryOrder } from "../hooks/useTeamEntryOrder";
+import { buildDefaultEntryOrderByGrade } from "../schoolPlayerGrade";
 import type { Player } from "../types";
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
 }
 
 type WizardStep = 1 | 2 | 3;
+type EntrySubStep = "select" | "order";
 
 export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
   const navigate = useNavigate();
@@ -36,7 +39,35 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
     [schoolPlayerById],
   );
 
-  const entryOrder = useTeamEntryOrder(myRosterPlayerIds);
+  const rosterPlayers = useMemo(
+    () => Array.from(schoolPlayerById.values()),
+    [schoolPlayerById],
+  );
+
+  const entrySelection = useEntryRosterSelection(rosterPlayers);
+
+  /** 순서 조정 단계에서만 채움 — 학년·이름순 기본 라인업 */
+  const [lineupOrderSeed, setLineupOrderSeed] = useState<number[] | null>(null);
+  const [entrySubStep, setEntrySubStep] = useState<EntrySubStep>("select");
+
+  const entryOrder = useTeamEntryOrder(lineupOrderSeed ?? []);
+
+  const goToLineupOrder = () => {
+    const ids = entrySelection.selectedIds;
+    if (ids.length === 0) return;
+    const ordered = buildDefaultEntryOrderByGrade(
+      ids,
+      (id) => schoolPlayerById.get(id),
+      new Date(),
+    );
+    setLineupOrderSeed(ordered);
+    setEntrySubStep("order");
+  };
+
+  const backToEntrySelection = () => {
+    setLineupOrderSeed(null);
+    setEntrySubStep("select");
+  };
 
   /** 내 팀 이름은 스토어(부모 API) 기준 — 입력으로 수정하지 않음 */
   const myTeamLabel = getMyTeamDisplayName(myTeam);
@@ -44,7 +75,10 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
   const canGoStep2 = opponent.isValid && title.trim().length > 0;
   const canSubmit =
     canGoStep2 &&
-    (myRosterPlayerIds.length === 0 || entryOrder.orderedIds.length > 0);
+    (myRosterPlayerIds.length === 0 ||
+      (entrySubStep === "order" &&
+        lineupOrderSeed != null &&
+        entryOrder.orderedIds.length > 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,12 +126,25 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
 
   const goNext = () => {
     if (step === 1 && !canGoStep2) return;
+    if (step === 2) {
+      setEntrySubStep("select");
+      setLineupOrderSeed(null);
+    }
     if (step < 3) setStep((s) => (s + 1) as WizardStep);
   };
 
   const goBack = () => {
-    if (step > 1) setStep((s) => (s - 1) as WizardStep);
-    else navigate("/");
+    if (step === 3 && entrySubStep === "order") {
+      backToEntrySelection();
+      return;
+    }
+    if (step > 1) {
+      if (step === 3) {
+        setEntrySubStep("select");
+        setLineupOrderSeed(null);
+      }
+      setStep((s) => (s - 1) as WizardStep);
+    } else navigate("/");
   };
 
   return (
@@ -138,8 +185,21 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
           <p className="text-blue-100 text-sm opacity-80">
             {step === 1 && "상대 팀 이름과 경기 제목을 입력하세요."}
             {step === 2 && "우리 팀이 홈인지 어웨이인지 선택하세요."}
+            {step === 3 && myTeam.loading && "팀 선수 정보를 불러오는 중입니다."}
             {step === 3 &&
-              "같은 학교 팀 선수 엔트리 순서를 정합니다 (위/아래 버튼)."}
+              !myTeam.loading &&
+              myRosterPlayerIds.length === 0 &&
+              "동일 학교 선수가 없으면 엔트리 없이 경기만 시작할 수 있습니다."}
+            {step === 3 &&
+              !myTeam.loading &&
+              myRosterPlayerIds.length > 0 &&
+              entrySubStep === "select" &&
+              "학년별로 묶어서 엔트리에 넣을 선수를 먼저 선택하세요."}
+            {step === 3 &&
+              !myTeam.loading &&
+              myRosterPlayerIds.length > 0 &&
+              entrySubStep === "order" &&
+              "선택한 선수의 라인업 순서를 조정합니다 (위/아래 버튼)."}
           </p>
         </div>
 
@@ -245,59 +305,151 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                 <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-4">
                   등록된 동일 학교 선수가 없습니다. 그대로 경기만 생성합니다.
                 </p>
+              ) : entrySubStep === "select" ? (
+                <div className="space-y-6">
+                  <p className="text-xs text-gray-500">
+                    출생연도·학년은 부모 API 필드 기준으로 묶입니다. 없으면
+                    「기타」에 표시됩니다.
+                  </p>
+                  {entrySelection.groups.map((group) => (
+                    <div key={String(group.gradeKey)}>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <h3 className="text-sm font-black text-blue-600">
+                          {group.label}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            entrySelection.toggleGroup(group.gradeKey)
+                          }
+                          className="text-xs font-bold text-blue-600 hover:text-blue-800 whitespace-nowrap"
+                        >
+                          {entrySelection.getGroupSelectionState(
+                            group.gradeKey,
+                          ) === "all"
+                            ? "선택 해제"
+                            : "전체 선택"}
+                        </button>
+                      </div>
+                      <ul className="space-y-2">
+                        {group.playerIds.map((pid) => {
+                          const schoolPlayer = schoolPlayerById.get(pid);
+                          const label =
+                            schoolPlayer?.name?.trim() || `#${pid}`;
+                          const meta = [
+                            schoolPlayer?.backNumber
+                              ? `#${schoolPlayer.backNumber}`
+                              : null,
+                            schoolPlayer?.position,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ");
+                          return (
+                            <li
+                              key={pid}
+                              className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3"
+                            >
+                              <input
+                                type="checkbox"
+                                id={`entry-${pid}`}
+                                checked={entrySelection.isSelected(pid)}
+                                onChange={() => entrySelection.toggle(pid)}
+                                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <label
+                                htmlFor={`entry-${pid}`}
+                                className="flex-1 min-w-0 cursor-pointer"
+                              >
+                                <div className="font-bold text-gray-800 truncate">
+                                  {label}
+                                </div>
+                                {meta ? (
+                                  <div className="text-[11px] text-gray-500 truncate">
+                                    {meta}
+                                  </div>
+                                ) : null}
+                              </label>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={goToLineupOrder}
+                    disabled={entrySelection.selectedIds.length === 0}
+                    className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black disabled:opacity-50"
+                  >
+                    라인업 순서 정하기
+                  </button>
+                </div>
               ) : (
-                <ul className="space-y-2">
-                  {entryOrder.orderedIds.map((pid, index) => {
-                    const schoolPlayer = schoolPlayerById.get(pid);
-                    const label = schoolPlayer?.name?.trim() || `#${pid}`;
-                    const meta = [
-                      schoolPlayer?.backNumber
-                        ? `#${schoolPlayer.backNumber}`
-                        : null,
-                      schoolPlayer?.position,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ");
-                    return (
-                      <li
-                        key={pid}
-                        className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3"
-                      >
-                        <span className="text-xs font-black text-gray-400 w-6">
-                          {index + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-800 truncate">
-                            {label}
-                          </div>
-                          {meta ? (
-                            <div className="text-[11px] text-gray-500 truncate">
-                              {meta}
+                <>
+                  <div className="flex justify-end mb-2">
+                    <button
+                      type="button"
+                      onClick={backToEntrySelection}
+                      className="text-sm font-bold text-blue-600 hover:underline"
+                    >
+                      선수 다시 선택
+                    </button>
+                  </div>
+                  <ul className="space-y-2">
+                    {entryOrder.orderedIds.map((pid, index) => {
+                      const schoolPlayer = schoolPlayerById.get(pid);
+                      const label = schoolPlayer?.name?.trim() || `#${pid}`;
+                      const meta = [
+                        schoolPlayer?.backNumber
+                          ? `#${schoolPlayer.backNumber}`
+                          : null,
+                        schoolPlayer?.position,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ");
+                      return (
+                        <li
+                          key={pid}
+                          className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3"
+                        >
+                          <span className="text-xs font-black text-gray-400 w-6">
+                            {index + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-gray-800 truncate">
+                              {label}
                             </div>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          aria-label="위로"
-                          disabled={index === 0}
-                          onClick={() => entryOrder.moveUp(index)}
-                          className="px-2 py-1 text-sm rounded bg-white border disabled:opacity-30"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="아래로"
-                          disabled={index === entryOrder.orderedIds.length - 1}
-                          onClick={() => entryOrder.moveDown(index)}
-                          className="px-2 py-1 text-sm rounded bg-white border disabled:opacity-30"
-                        >
-                          ↓
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                            {meta ? (
+                              <div className="text-[11px] text-gray-500 truncate">
+                                {meta}
+                              </div>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            aria-label="위로"
+                            disabled={index === 0}
+                            onClick={() => entryOrder.moveUp(index)}
+                            className="px-2 py-1 text-sm rounded bg-white border disabled:opacity-30"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="아래로"
+                            disabled={
+                              index === entryOrder.orderedIds.length - 1
+                            }
+                            onClick={() => entryOrder.moveDown(index)}
+                            className="px-2 py-1 text-sm rounded bg-white border disabled:opacity-30"
+                          >
+                            ↓
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
               <div className="pt-2 flex justify-between items-center">
                 <button
@@ -307,13 +459,20 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                 >
                   Back
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !canSubmit}
-                  className="bg-blue-600 text-white rounded-2xl px-8 py-4 text-xl font-black shadow-lg disabled:opacity-50"
-                >
-                  {isSubmitting ? "Initializing..." : "Start Scoring Now"}
-                </button>
+                {myRosterPlayerIds.length === 0 ||
+                entrySubStep === "order" ? (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !canSubmit}
+                    className="bg-blue-600 text-white rounded-2xl px-8 py-4 text-xl font-black shadow-lg disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Initializing..." : "Start Scoring Now"}
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-400 max-w-[140px] text-right">
+                    선수 선택 후 「라인업 순서 정하기」를 누르세요
+                  </span>
+                )}
               </div>
               <p className="text-center text-gray-400 text-xs">
                 You can register more players after starting the game.

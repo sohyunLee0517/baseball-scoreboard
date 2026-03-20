@@ -60,8 +60,7 @@ export const GameList: React.FC = () => {
               {myTeam.school.name}
               <span className="text-gray-400 font-bold">
                 {" "}
-                • {myTeam.school.category_label} •{" "}
-                {myTeam.school.region}
+                • {myTeam.school.category_label} • {myTeam.school.region}
               </span>
             </a>
           ) : (
@@ -120,9 +119,7 @@ export const GameList: React.FC = () => {
             <div
               key={game.id}
               className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:border-blue-100 transition-all cursor-pointer"
-              onClick={() =>
-                game.id != null && navigate(`/games/${game.id}`)
-              }
+              onClick={() => game.id != null && navigate(`/games/${game.id}`)}
             >
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
