@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/", "destination": "/scoreboard/", "permanent": false },
+    { "source": "/scoreboard", "destination": "/scoreboard/", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/scoreboard/:path*", "destination": "/index.html" }
+  ]
+}
