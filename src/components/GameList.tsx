@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getGames, deleteGame } from "../api";
 import { Game } from "../types";
 import { useOwnerId } from "../ownerId-store";
-import { useSchoolInfoForOwnerPlayer } from "../hooks/useSchoolInfoByPlayerIds";
+import { useMyTeam } from "../my-team-store";
 
 export const GameList: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +11,8 @@ export const GameList: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { schoolInfo: schoolState } = useSchoolInfoForOwnerPlayer();
+  /** 학교 정보·학교 선수 리스트 — 전역 MyTeam 스토어만 사용 */
+  const myTeam = useMyTeam();
 
   useEffect(() => {
     loadGames();
@@ -47,33 +48,33 @@ export const GameList: React.FC = () => {
     <div className="max-w-4xl mx-auto px-4">
       <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
         <div className="text-xs text-gray-500 mb-2">
-          {schoolState.loading ? (
+          {myTeam.loading ? (
             "학교 정보 로딩중..."
-          ) : schoolState.school ? (
+          ) : myTeam.school ? (
             <a
-              href={schoolState.school.url || "#"}
+              href={myTeam.school.url || "#"}
               target="_blank"
               rel="noreferrer"
               className="text-blue-600 hover:underline font-bold"
             >
-              {schoolState.school.name}
+              {myTeam.school.name}
               <span className="text-gray-400 font-bold">
                 {" "}
-                • {schoolState.school.category_label} •{" "}
-                {schoolState.school.region}
+                • {myTeam.school.category_label} •{" "}
+                {myTeam.school.region}
               </span>
             </a>
           ) : (
             <span className="text-gray-400">학교 정보 없음</span>
           )}
         </div>
-        {!schoolState.loading && schoolState.players.length > 0 && (
+        {!myTeam.loading && myTeam.players.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
               같은 학교 선수
             </p>
             <ul className="flex flex-wrap gap-2 text-xs text-slate-700">
-              {schoolState.players.map((p, idx) => (
+              {myTeam.players.map((p, idx) => (
                 <li
                   key={p.id ?? `p-${idx}`}
                   className="rounded-full bg-slate-100 px-3 py-1"

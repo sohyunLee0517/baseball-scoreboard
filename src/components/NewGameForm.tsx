@@ -1,29 +1,80 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createGame } from "../api";
+import { buildSchoolPlayerByIdMap, useMyTeam } from "../my-team-store";
+import { getMyTeamDisplayName } from "../myTeamDisplayName";
+import { useOpponentTeamInput } from "../hooks/useOpponentTeamInput";
+import { useMyTeamHomeAway } from "../hooks/useMyTeamHomeAway";
+import { useTeamEntryOrder } from "../hooks/useTeamEntryOrder";
+import type { Player } from "../types";
 
 interface Props {
   ownerId: string | null;
 }
 
+type WizardStep = 1 | 2 | 3;
+
 export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
   const navigate = useNavigate();
+  const myTeam = useMyTeam();
+
+  const [step, setStep] = useState<WizardStep>(1);
   const [title, setTitle] = useState("");
-  const [homeTeam, setHomeTeam] = useState("");
-  const [awayTeam, setAwayTeam] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const opponent = useOpponentTeamInput();
+  const { myTeamSide, setMyTeamSide } = useMyTeamHomeAway();
+
+  /** 전역 스토어 `myTeam.players` → id 맵 (학교 선수 API와 동일 소스) */
+  const schoolPlayerById = useMemo(
+    () => buildSchoolPlayerByIdMap(myTeam.players),
+    [myTeam.players],
+  );
+
+  const myRosterPlayerIds = useMemo(
+    () => Array.from(schoolPlayerById.keys()),
+    [schoolPlayerById],
+  );
+
+  const entryOrder = useTeamEntryOrder(myRosterPlayerIds);
+
+  /** 내 팀 이름은 스토어(부모 API) 기준 — 입력으로 수정하지 않음 */
+  const myTeamLabel = getMyTeamDisplayName(myTeam);
+
+  const canGoStep2 = opponent.isValid && title.trim().length > 0;
+  const canSubmit =
+    canGoStep2 &&
+    (myRosterPlayerIds.length === 0 || entryOrder.orderedIds.length > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!ownerId) return;
+    if (!canSubmit) return;
+
     setIsSubmitting(true);
     try {
+      const opp = opponent.trimmedOpponentName;
+      const homeTeam = myTeamSide === "HOME" ? myTeamLabel : opp;
+      const awayTeam = myTeamSide === "HOME" ? opp : myTeamLabel;
+
+      const players: Player[] = entryOrder.orderedIds.map((pid, idx) => {
+        const src = schoolPlayerById.get(pid);
+        return {
+          id: pid,
+          name: src?.name ?? "",
+          team: myTeamSide,
+          position: src?.position?.trim() || "Bench",
+          backNumber: src?.backNumber?.trim() || String(idx + 1),
+          lineupOrder: idx + 1,
+        };
+      });
+
       const newGame = await createGame({
         ownerId,
-        title,
+        title: title.trim(),
         homeTeam,
         awayTeam,
-        players: [],
+        players,
         status: "IN_PROGRESS",
       });
       if (newGame.id != null) {
@@ -39,10 +90,21 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
     }
   };
 
+  const goNext = () => {
+    if (step === 1 && !canGoStep2) return;
+    if (step < 3) setStep((s) => (s + 1) as WizardStep);
+  };
+
+  const goBack = () => {
+    if (step > 1) setStep((s) => (s - 1) as WizardStep);
+    else navigate("/");
+  };
+
   return (
     <div className="max-w-xl mx-auto px-4">
       <button
-        onClick={() => navigate("/")}
+        type="button"
+        onClick={() => (step === 1 ? navigate("/") : goBack())}
         className="mb-6 text-gray-400 hover:text-gray-600 flex items-center text-sm font-bold transition"
       >
         <svg
@@ -57,8 +119,16 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
             clipRule="evenodd"
           />
         </svg>
-        Cancel and Return
+        {step === 1 ? "Cancel and Return" : "Back"}
       </button>
+
+      <div className="mb-4 flex gap-2 text-xs font-bold text-gray-400">
+        <span className={step === 1 ? "text-blue-600" : ""}>① 상대팀</span>
+        <span>→</span>
+        <span className={step === 2 ? "text-blue-600" : ""}>② 홈/어웨이</span>
+        <span>→</span>
+        <span className={step === 3 ? "text-blue-600" : ""}>③ 엔트리</span>
+      </div>
 
       <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
         <div className="bg-blue-600 p-8 text-white">
@@ -66,66 +136,190 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
             Initialize New Game
           </h2>
           <p className="text-blue-100 text-sm opacity-80">
-            Enter team names and a title to start a new scoreboard session.
+            {step === 1 && "상대 팀 이름과 경기 제목을 입력하세요."}
+            {step === 2 && "우리 팀이 홈인지 어웨이인지 선택하세요."}
+            {step === 3 &&
+              "같은 학교 팀 선수 엔트리 순서를 정합니다 (위/아래 버튼)."}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <div>
-            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
-              Match Title
-            </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-gray-50 border-2 border-gray-50 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
-              placeholder="e.g. 2024 Spring Tournament Final"
-            />
-          </div>
+          {step === 1 && (
+            <>
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
+                  Match Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full bg-gray-50 border-2 border-gray-50 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  placeholder="e.g. 2024 Spring Tournament Final"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
+                  상대팀 이름
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={opponent.opponentName}
+                  onChange={(e) => opponent.setOpponentName(e.target.value)}
+                  className="w-full bg-gray-50 border-2 border-gray-50 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  placeholder="상대 학교 / 팀명"
+                />
+              </div>
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={!canGoStep2}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
-                Home Team
-              </label>
-              <input
-                type="text"
-                required
-                value={homeTeam}
-                onChange={(e) => setHomeTeam(e.target.value)}
-                className="w-full bg-gray-50 border-2 border-gray-50 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
-                placeholder="Home Giants"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
-                Away Team
-              </label>
-              <input
-                type="text"
-                required
-                value={awayTeam}
-                onChange={(e) => setAwayTeam(e.target.value)}
-                className="w-full bg-gray-50 border-2 border-gray-50 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
-                placeholder="Away Tigers"
-              />
-            </div>
-          </div>
+          {step === 2 && (
+            <>
+              <div>
+                <p className="text-sm font-bold text-gray-700 mb-3">
+                  우리 팀: <span className="text-blue-600">{myTeamLabel}</span>
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setMyTeamSide("HOME")}
+                    className={`rounded-2xl border-2 py-4 font-black ${
+                      myTeamSide === "HOME"
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-gray-100 bg-gray-50 text-gray-600"
+                    }`}
+                  >
+                    홈 (HOME)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMyTeamSide("AWAY")}
+                    className={`rounded-2xl border-2 py-4 font-black ${
+                      myTeamSide === "AWAY"
+                        ? "border-blue-600 bg-blue-50 text-blue-700"
+                        : "border-gray-100 bg-gray-50 text-gray-600"
+                    }`}
+                  >
+                    어웨이 (AWAY)
+                  </button>
+                </div>
+              </div>
+              <div className="pt-2 flex justify-between">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="text-gray-500 font-bold px-4 py-2"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
 
-          <div className="pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-blue-600 text-white rounded-2xl py-5 text-xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 disabled:opacity-50 transition-all transform active:scale-[0.98]"
-            >
-              {isSubmitting ? "Initializing..." : "Start Scoring Now"}
-            </button>
-            <p className="text-center text-gray-400 text-xs mt-4">
-              You can register players after starting the game.
-            </p>
-          </div>
+          {step === 3 && (
+            <>
+              {myTeam.loading ? (
+                <p className="text-sm text-gray-500">
+                  팀 선수 목록 불러오는 중…
+                </p>
+              ) : myRosterPlayerIds.length === 0 ? (
+                <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-4">
+                  등록된 동일 학교 선수가 없습니다. 그대로 경기만 생성합니다.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {entryOrder.orderedIds.map((pid, index) => {
+                    const schoolPlayer = schoolPlayerById.get(pid);
+                    const label = schoolPlayer?.name?.trim() || `#${pid}`;
+                    const meta = [
+                      schoolPlayer?.backNumber
+                        ? `#${schoolPlayer.backNumber}`
+                        : null,
+                      schoolPlayer?.position,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <li
+                        key={pid}
+                        className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3"
+                      >
+                        <span className="text-xs font-black text-gray-400 w-6">
+                          {index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-gray-800 truncate">
+                            {label}
+                          </div>
+                          {meta ? (
+                            <div className="text-[11px] text-gray-500 truncate">
+                              {meta}
+                            </div>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="위로"
+                          disabled={index === 0}
+                          onClick={() => entryOrder.moveUp(index)}
+                          className="px-2 py-1 text-sm rounded bg-white border disabled:opacity-30"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="아래로"
+                          disabled={index === entryOrder.orderedIds.length - 1}
+                          onClick={() => entryOrder.moveDown(index)}
+                          className="px-2 py-1 text-sm rounded bg-white border disabled:opacity-30"
+                        >
+                          ↓
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="pt-2 flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="text-gray-500 font-bold px-4 py-2"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !canSubmit}
+                  className="bg-blue-600 text-white rounded-2xl px-8 py-4 text-xl font-black shadow-lg disabled:opacity-50"
+                >
+                  {isSubmitting ? "Initializing..." : "Start Scoring Now"}
+                </button>
+              </div>
+              <p className="text-center text-gray-400 text-xs">
+                You can register more players after starting the game.
+              </p>
+            </>
+          )}
         </form>
       </div>
     </div>

@@ -1,28 +1,31 @@
 import axios from "axios";
 
-export interface PlayerSchoolNameResponse {
-  schoolName: string | null;
-}
+import type {
+  PlayerSchoolNameResponse,
+  School,
+  SchoolByNameResponse,
+  SchoolInfoData,
+  SchoolPlayerListItem,
+  SchoolPlayersByNameResponse,
+} from "./types/school";
 
-export interface School {
-  name: string;
-  category: string;
-  category_label: string;
-  region: string;
-  url: string;
-  count: number;
-}
-
-export interface SchoolByNameResponse {
-  school: School;
-}
+export type {
+  PlayerSchoolNameResponse,
+  School,
+  SchoolByNameResponse,
+  SchoolInfoData,
+  SchoolPlayerListItem,
+  SchoolPlayersByNameResponse,
+} from "./types/school";
 
 const playerSchoolNameApi = axios.create({
   baseURL: "/api/player/school-name",
 });
 
 // GET /api/player/school-name?playerId=...
-export const getSchoolNameByPlayerId = async (playerId: number) => {
+export const getSchoolNameByPlayerId = async (
+  playerId: number,
+): Promise<PlayerSchoolNameResponse> => {
   const response = await playerSchoolNameApi.get(`?playerId=${playerId}`);
   return response.data as PlayerSchoolNameResponse;
 };
@@ -32,7 +35,9 @@ const schoolByNameApi = axios.create({
 });
 
 // GET /api/school/by-name?name=...
-export const getSchoolByName = async (name: string) => {
+export const getSchoolByName = async (
+  name: string,
+): Promise<SchoolByNameResponse> => {
   const response = await schoolByNameApi.get(
     `?name=${encodeURIComponent(name)}`,
   );
@@ -43,30 +48,52 @@ const schoolPlayersByNameApi = axios.create({
   baseURL: "/api/school/by-name/players",
 });
 
-/** 부모 API 응답 필드는 필요 시 확장 */
-export interface SchoolPlayerListItem {
-  id?: number;
-  name?: string;
-}
-
-export interface SchoolPlayersByNameResponse {
-  players: SchoolPlayerListItem[];
+/**
+ * 학교 선수 객체에서 숫자 id를 뽑습니다. (JSON에서 id가 문자열로 오는 경우 대응)
+ */
+export function parseSchoolPlayerId(p: SchoolPlayerListItem): number | null {
+  const raw = p.id ?? p.playerId;
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string") {
+    const n = Number(raw.trim());
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
 }
 
 // GET /api/school/by-name/players?name=...
-export const getSchoolPlayersByName = async (name: string) => {
+export const getSchoolPlayersByName = async (
+  name: string,
+): Promise<SchoolPlayersByNameResponse> => {
   const response = await schoolPlayersByNameApi.get(
     `?name=${encodeURIComponent(name)}`,
   );
   return response.data as SchoolPlayersByNameResponse;
 };
 
-/** playerId → schoolName → school 상세 + 동일 학교 선수 목록 */
-export type SchoolInfoData = {
-  schoolName: string | null;
+/**
+ * 정확한 학교명으로 학교 상세 + 해당 학교 소속 선수 목록을 함께 조회합니다.
+ * 선수 리스트는 `getSchoolPlayersByName`을 사용합니다.
+ */
+export async function fetchSchoolInfoBySchoolName(schoolName: string): Promise<{
   school: School | null;
   players: SchoolPlayerListItem[];
-};
+}> {
+  const [{ school }, playersRes] = await Promise.all([
+    getSchoolByName(schoolName),
+    getSchoolPlayersByName(schoolName).catch(
+      (): SchoolPlayersByNameResponse => ({
+        players: [],
+      }),
+    ),
+  ]);
+
+  return {
+    school,
+    players: playersRes.players ?? [],
+  };
+}
 
 /**
  * playerId로 최종학교명을 받고, 있으면 학교 상세·해당 학교 선수 리스트를 조회합니다.
@@ -79,18 +106,11 @@ export async function fetchSchoolInfoForPlayerId(
     return { schoolName: null, school: null, players: [] };
   }
 
-  const [{ school }, playersRes] = await Promise.all([
-    getSchoolByName(schoolName),
-    getSchoolPlayersByName(schoolName).catch(
-      (): SchoolPlayersByNameResponse => ({
-        players: [],
-      }),
-    ),
-  ]);
+  const { school, players } = await fetchSchoolInfoBySchoolName(schoolName);
 
   return {
     schoolName,
     school,
-    players: playersRes.players ?? [],
+    players,
   };
 }

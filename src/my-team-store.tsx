@@ -1,8 +1,35 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { fetchSchoolInfoForPlayerId, type SchoolInfoData } from "./school-api";
+import {
+  fetchSchoolInfoBySchoolName,
+  getSchoolNameByPlayerId,
+  parseSchoolPlayerId,
+} from "./school-api";
+import type {
+  SchoolInfoData,
+  SchoolPlayerListItem,
+  SchoolPlayerWithNumericId,
+} from "./types";
 import { useOwnerId } from "./ownerId-store";
 
-/** ownerId(내 선수) 기준 학교(팀) 및 동일 학교 선수 목록 */
+/**
+ * 전역 스토어: 학교 정보 + 학교 소속 선수 리스트를 한곳에 둡니다 (별도 훅으로 또 부르지 않음).
+ * - `school`, `schoolName`: 학교 메타
+ * - `players`: `getSchoolPlayersByName` → `GET /api/school/by-name/players?name=...`
+ */
+
+/** 스토어의 `players`로 id → 선수 조회 맵 (엔트리 UI·제출용). id는 문자열로 와도 파싱합니다. */
+export function buildSchoolPlayerByIdMap(
+  players: SchoolPlayerListItem[],
+): Map<number, SchoolPlayerWithNumericId> {
+  const m = new Map<number, SchoolPlayerWithNumericId>();
+  for (const p of players) {
+    const id = parseSchoolPlayerId(p);
+    if (id != null) {
+      m.set(id, { ...p, id });
+    }
+  }
+  return m;
+}
 export type MyTeamStoreState = SchoolInfoData & {
   loading: boolean;
   error?: string;
@@ -36,15 +63,39 @@ export const MyTeamProvider: React.FC<{ children: React.ReactNode }> = ({
       error: undefined,
     }));
 
-    void Promise.resolve(fetchSchoolInfoForPlayerId(Number(ownerId)))
-      .then((data) => {
+    void (async () => {
+      try {
+        const playerId = Number(ownerId);
+        if (Number.isNaN(playerId)) {
+          if (!cancelled) {
+            setState({
+              ...emptyState,
+              loading: false,
+              error: "Invalid ownerId",
+            });
+          }
+          return;
+        }
+
+        const { schoolName } = await getSchoolNameByPlayerId(playerId);
+        if (!schoolName) {
+          if (!cancelled) {
+            setState({ ...emptyState, loading: false });
+          }
+          return;
+        }
+
+        const { school, players } =
+          await fetchSchoolInfoBySchoolName(schoolName);
+
         if (cancelled) return;
         setState({
-          ...data,
+          schoolName,
+          school,
+          players,
           loading: false,
         });
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (cancelled) return;
         setState({
           schoolName: null,
@@ -53,7 +104,8 @@ export const MyTeamProvider: React.FC<{ children: React.ReactNode }> = ({
           loading: false,
           error: e instanceof Error ? e.message : "Unknown error",
         });
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
