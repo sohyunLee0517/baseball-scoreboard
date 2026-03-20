@@ -24,4 +24,8 @@ export type {
   SchoolPlayersByNameResponse,
 } from "./school";
 
-export type { CreateGamePayload, UpdateGamePayload } from "./scoreboard-api";
+export type {
+  CreateGamePayload,
+  CreateGamePlayerBody,
+  UpdateGamePayload,
+} from "./scoreboard-api";

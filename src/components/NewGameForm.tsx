@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createGame } from "../api";
+import { setLineupForGame } from "../lineup-store";
 import { buildSchoolPlayerByIdMap, useMyTeam } from "../my-team-store";
 import { getMyTeamDisplayName } from "../myTeamDisplayName";
 import { useOpponentTeamInput } from "../hooks/useOpponentTeamInput";
@@ -112,6 +113,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
         status: "IN_PROGRESS",
       });
       if (newGame.id != null) {
+        setLineupForGame(newGame.id, players);
         navigate(`/games/${newGame.id}`);
       } else {
         navigate("/");

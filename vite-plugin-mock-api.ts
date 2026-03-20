@@ -26,6 +26,20 @@ function readBody(req: IncomingMessage): Promise<string> {
   })
 }
 
+/** POST/PUT 본문을 안전히 객체로 — JSON 오류·null·배열이면 500 방지 */
+function parseJsonBody(raw: string): Record<string, unknown> {
+  if (!raw || !raw.trim()) return {}
+  try {
+    const v = JSON.parse(raw) as unknown
+    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+      return v as Record<string, unknown>
+    }
+    return {}
+  } catch {
+    return {}
+  }
+}
+
 export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
   return async (req, res, next) => {
     const url = req.url || ''
@@ -33,9 +47,10 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
       return next()
     }
 
-    const { pathname, query } = parseUrl(url, true)
+    const { pathname: rawPath, query } = parseUrl(url, true)
+    const pathname = rawPath?.replace(/\/$/, '') || ''
     const method = req.method || 'GET'
-    const idFromPath = pathname?.match(/^\/api\/scoreboard\/game\/(\d+)$/)
+    const idFromPath = pathname.match(/^\/api\/scoreboard\/game\/(\d+)$/)
     const id = idFromPath ? Number(idFromPath[1]) : null
 
     try {
@@ -56,7 +71,7 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
       // POST /api/scoreboard/game
       if (method === 'POST' && pathname === '/api/scoreboard/game') {
         const raw = await readBody(req)
-        const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+        const body = parseJsonBody(raw)
         const game = {
           ...body,
           id: nextId++,
@@ -73,7 +88,7 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
       // PUT /api/scoreboard/game/:id
       if (method === 'PUT' && id !== null) {
         const raw = await readBody(req)
-        const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+        const body = parseJsonBody(raw)
         const idx = games.findIndex((g) => (g as { id?: number }).id === id)
         if (idx === -1) return json(res, 404, { message: 'Not found' })
         const updated = { ...games[idx], ...body, id }
