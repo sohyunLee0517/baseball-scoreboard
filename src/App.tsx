@@ -1,28 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { GameList } from './components/GameList';
-import { NewGameForm } from './components/NewGameForm';
-import { Scoreboard } from './components/Scoreboard';
-import { Game } from './types';
+import { useState } from "react";
+import { GameList } from "./components/GameList";
+import { NewGameForm } from "./components/NewGameForm";
+import { Scoreboard } from "./components/Scoreboard";
+import { Game } from "./types";
+import { useOwnerId } from "./ownerId-store";
 
 function App() {
-  const [view, setView] = useState<'LIST' | 'CREATE' | 'SCOREBOARD'>('LIST');
+  const [view, setView] = useState<"LIST" | "CREATE" | "SCOREBOARD">("LIST");
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [ownerId, setOwnerId] = useState("user-123");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const oid = params.get('ownerId');
-    if (oid) setOwnerId(oid);
-  }, []);
+  const { ownerId } = useOwnerId();
 
   const handleSelectGame = (game: Game) => {
     setSelectedGame(game);
-    setView('SCOREBOARD');
+    setView("SCOREBOARD");
   };
 
   const handleGameCreated = (game: Game) => {
     setSelectedGame(game);
-    setView('SCOREBOARD');
+    setView("SCOREBOARD");
   };
 
   return (
@@ -30,62 +25,85 @@ function App() {
       {/* Dynamic Header */}
       <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                </div>
-                <span className="font-black tracking-tighter text-xl text-slate-900">BASEBALL<span className="text-blue-600">HUB</span></span>
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-200">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
             </div>
-            
-            <div className="flex items-center gap-4">
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase text-slate-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    Connected: {ownerId}
-                </div>
-                <a href="/" className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors">Exit to Home</a>
+            <span className="font-black tracking-tighter text-xl text-slate-900">
+              BASEBALL<span className="text-blue-600">HUB</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black uppercase text-slate-400">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+              Connected: {ownerId}
             </div>
+            <a
+              href="/"
+              className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors"
+            >
+              Exit to Home
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="py-12">
-        {view === 'LIST' && (
-          <GameList 
-            ownerId={ownerId} 
+        {view === "LIST" && (
+          <GameList
             onSelectGame={handleSelectGame}
-            onNewGame={() => setView('CREATE')}
+            onNewGame={() => setView("CREATE")}
           />
         )}
-        {view === 'CREATE' && (
-          <NewGameForm 
+        {view === "CREATE" && (
+          <NewGameForm
             ownerId={ownerId}
             onGameCreated={handleGameCreated}
-            onCancel={() => setView('LIST')}
+            onCancel={() => setView("LIST")}
           />
         )}
-        {view === 'SCOREBOARD' && selectedGame && (
-          <Scoreboard 
+        {view === "SCOREBOARD" && selectedGame && (
+          <Scoreboard
             game={selectedGame}
             onBack={() => {
               setSelectedGame(null);
-              setView('LIST');
+              setView("LIST");
             }}
           />
         )}
       </main>
 
       <footer className="max-w-6xl mx-auto px-4 py-12 border-t border-slate-200">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="text-slate-400 text-xs font-bold uppercase tracking-widest">
-                  © 2026 Baseball Statistics Platform
-              </div>
-              <div className="flex gap-8">
-                  <span className="text-slate-300 text-[10px] font-bold uppercase tracking-widest cursor-default">Privacy</span>
-                  <span className="text-slate-300 text-[10px] font-bold uppercase tracking-widest cursor-default">Terms</span>
-                  <span className="text-slate-300 text-[10px] font-bold uppercase tracking-widest cursor-default">Support</span>
-              </div>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+            © 2026 Baseball Statistics Platform
           </div>
+          <div className="flex gap-8">
+            <span className="text-slate-300 text-[10px] font-bold uppercase tracking-widest cursor-default">
+              Privacy
+            </span>
+            <span className="text-slate-300 text-[10px] font-bold uppercase tracking-widest cursor-default">
+              Terms
+            </span>
+            <span className="text-slate-300 text-[10px] font-bold uppercase tracking-widest cursor-default">
+              Support
+            </span>
+          </div>
+        </div>
       </footer>
     </div>
   );
