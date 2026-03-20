@@ -59,27 +59,15 @@ model Inning {
 }
 
 model BatRecord {
-  id            String         @id @default(uuid())
-  matchId       String
-  match         Match          @relation(fields: [matchId], references: [id])
-  playerId      String
-  playerName    String
-  position      String
-  batOrder      Int
-  atBats        Int
-  hits          Int
-  homeRuns      Int
-  walks         Int
-  strikeouts    Int
-  inningResults InningResult[]
-}
-
-model InningResult {
-  id          String    @id @default(uuid())
-  batRecordId String
-  batRecord   BatRecord @relation(fields: [batRecordId], references: [id])
-  inningNo    Int
-  result      BatResult
+  id         String    @id @default(uuid())
+  matchId    String
+  match      Match     @relation(fields: [matchId], references: [id])
+  playerId   String
+  playerName String
+  position   String
+  batOrder   Int
+  inningNo   Int
+  result     BatResult
 }
 
 model PitchRecord {
