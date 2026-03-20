@@ -15,7 +15,8 @@
     "server": "node -r dotenv/config dist/server/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:apply:scoreboard": "node scripts/apply-scoreboard-table.mjs"
+    "db:apply:scoreboard": "node scripts/apply-scoreboard-table.mjs",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.5.0",
