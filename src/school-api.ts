@@ -61,21 +61,6 @@ export const getSchoolPlayersByName = async (name: string) => {
   return response.data as SchoolPlayersByNameResponse;
 };
 
-/** accountId(account_id) → schoolName → school 상세 + 동일 학교 선수 목록 */
-export async function fetchSchoolInfoByAccountId(
-  accountId: string,
-): Promise<SchoolInfoData> {
-  const res = await axios.get(`/api/player/home-team?ownerId=${encodeURIComponent(accountId)}`);
-  const schoolName: string | null = res.data?.schoolName ?? null;
-  if (!schoolName) return { schoolName: null, school: null, players: [] };
-
-  const [{ school }, playersRes] = await Promise.all([
-    getSchoolByName(schoolName),
-    getSchoolPlayersByName(schoolName).catch((): SchoolPlayersByNameResponse => ({ players: [] })),
-  ]);
-  return { schoolName, school, players: playersRes.players ?? [] };
-}
-
 /** playerId → schoolName → school 상세 + 동일 학교 선수 목록 */
 export type SchoolInfoData = {
   schoolName: string | null;
@@ -89,16 +74,18 @@ export type SchoolInfoData = {
 export async function fetchSchoolInfoForPlayerId(
   playerId: number,
 ): Promise<SchoolInfoData> {
-  const { schoolName } = await getSchoolNameByPlayerId(playerId);
+  const { schoolName } = await getSchoolNameByPlayerId(202505001144);
   if (!schoolName) {
     return { schoolName: null, school: null, players: [] };
   }
 
   const [{ school }, playersRes] = await Promise.all([
     getSchoolByName(schoolName),
-    getSchoolPlayersByName(schoolName).catch((): SchoolPlayersByNameResponse => ({
-      players: [],
-    })),
+    getSchoolPlayersByName(schoolName).catch(
+      (): SchoolPlayersByNameResponse => ({
+        players: [],
+      }),
+    ),
   ]);
 
   return {

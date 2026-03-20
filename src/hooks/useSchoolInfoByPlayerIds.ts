@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchSchoolInfoByAccountId, type SchoolInfoData } from "../school-api";
+import { fetchSchoolInfoForPlayerId, type SchoolInfoData } from "../school-api";
 import { useOwnerId } from "../ownerId-store";
 
 /**
@@ -38,7 +38,7 @@ export function useSchoolInfoForOwnerPlayer() {
       error: undefined,
     }));
 
-    void Promise.resolve(fetchSchoolInfoByAccountId(ownerId))
+    void Promise.resolve(fetchSchoolInfoForPlayerId(Number(ownerId)))
       .then((data) => {
         if (cancelled) return;
         setSchoolInfo({
