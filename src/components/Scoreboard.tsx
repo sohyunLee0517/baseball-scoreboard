@@ -79,9 +79,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
   useEffect(() => {
     if (myTeam.loading || !schoolPlayerIdsKey) return;
-    setPlayers((prev) =>
-      normalizeRosterSchoolPlayerIds(prev, myTeam.players),
-    );
+    setPlayers((prev) => normalizeRosterSchoolPlayerIds(prev, myTeam.players));
   }, [schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
 
   const availableSchoolPlayers = useMemo(
@@ -178,6 +176,16 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         errors: 0,
       }
     );
+  };
+
+  const reorderRosterPlayer = (from: number, to: number) => {
+    setPlayers((prev) => {
+      if (to < 0 || to >= prev.length || from === to) return prev;
+      const next = [...prev];
+      const [removed] = next.splice(from, 1);
+      next.splice(to, 0, removed);
+      return next.map((p, i) => ({ ...p, lineupOrder: i + 1 }));
+    });
   };
 
   return (
@@ -445,25 +453,52 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-2">
             {players.map((p, idx) => (
               <div
-                key={idx}
-                className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-100 text-sm"
+                key={p.id != null ? `id-${p.id}` : `row-${idx}-${p.name}`}
+                className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100 text-sm"
               >
                 <span
-                  className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-white ${p.team === "HOME" ? "bg-indigo-500" : "bg-orange-500"}`}
+                  className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full font-bold text-white ${p.team === "HOME" ? "bg-indigo-500" : "bg-orange-500"}`}
                 >
-                  {p.backNumber || "#"}
+                  {idx + 1}
                 </span>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="font-bold text-gray-800">{p.name}</div>
                   <div className="text-[10px] text-gray-400 uppercase font-medium">
                     {p.position} • {p.team}
                   </div>
                 </div>
+                <div className="flex shrink-0 flex-col gap-0.5">
+                  <button
+                    type="button"
+                    aria-label="Move up"
+                    disabled={idx === 0}
+                    onClick={() => reorderRosterPlayer(idx, idx - 1)}
+                    className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move down"
+                    disabled={idx === players.length - 1}
+                    onClick={() => reorderRosterPlayer(idx, idx + 1)}
+                    className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    ↓
+                  </button>
+                </div>
                 <button
+                  type="button"
                   onClick={() =>
-                    setPlayers(players.filter((_, i) => i !== idx))
+                    setPlayers((prev) => {
+                      const filtered = prev.filter((_, i) => i !== idx);
+                      return filtered.map((row, i) => ({
+                        ...row,
+                        lineupOrder: i + 1,
+                      }));
+                    })
                   }
-                  className="text-gray-300 hover:text-red-500 transition"
+                  className="text-gray-300 hover:text-red-500 transition shrink-0"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -543,6 +578,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                         backNumber: sp.backNumber,
                         team,
                         position: sp.position,
+                        lineupOrder: players.length + 1,
                       },
                     ]);
                     setSelectedSchoolPlayerId("");
