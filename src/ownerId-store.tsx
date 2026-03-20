@@ -17,11 +17,13 @@ export const OwnerIdProvider: React.FC<{ children: React.ReactNode }> = ({
     return window.localStorage.getItem(OWNER_ID_STORAGE_KEY);
   });
 
-  // Initialize from URL query (?ownerId=...) once.
+  // Initialize from URL query (?ownerId=...) once, only if localStorage doesn't already have a value.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const oid = params.get("ownerId");
     if (!oid) return;
+    const stored = window.localStorage.getItem(OWNER_ID_STORAGE_KEY);
+    if (stored) return;
     setOwnerId(oid);
     window.localStorage.setItem(OWNER_ID_STORAGE_KEY, oid);
   }, []);

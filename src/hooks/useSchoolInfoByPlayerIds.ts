@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchSchoolInfoForPlayerId, type SchoolInfoData } from "../school-api";
+import { fetchSchoolInfoByAccountId, type SchoolInfoData } from "../school-api";
 import { useOwnerId } from "../ownerId-store";
 
 /**
@@ -31,18 +31,6 @@ export function useSchoolInfoForOwnerPlayer() {
       return;
     }
 
-    const playerId = Number(ownerId);
-    if (Number.isNaN(playerId)) {
-      setSchoolInfo({
-        schoolName: null,
-        school: null,
-        players: [],
-        loading: false,
-        error: "Invalid ownerId",
-      });
-      return;
-    }
-
     let cancelled = false;
     setSchoolInfo((prev) => ({
       ...prev,
@@ -50,7 +38,7 @@ export function useSchoolInfoForOwnerPlayer() {
       error: undefined,
     }));
 
-    void Promise.resolve(fetchSchoolInfoForPlayerId(playerId))
+    void Promise.resolve(fetchSchoolInfoByAccountId(ownerId))
       .then((data) => {
         if (cancelled) return;
         setSchoolInfo({
