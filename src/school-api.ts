@@ -74,7 +74,7 @@ export type SchoolInfoData = {
 export async function fetchSchoolInfoForPlayerId(
   playerId: number,
 ): Promise<SchoolInfoData> {
-  const { schoolName } = await getSchoolNameByPlayerId(202505001144);
+  const { schoolName } = await getSchoolNameByPlayerId(playerId);
   if (!schoolName) {
     return { schoolName: null, school: null, players: [] };
   }

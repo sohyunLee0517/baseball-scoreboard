@@ -1,24 +1,11 @@
-import { useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { GameList } from "./components/GameList";
 import { NewGameForm } from "./components/NewGameForm";
-import { Scoreboard } from "./components/Scoreboard";
-import { Game } from "./types";
+import { ScoreboardPage } from "./components/ScoreboardPage";
 import { useOwnerId } from "./ownerId-store";
 
 function App() {
-  const [view, setView] = useState<"LIST" | "CREATE" | "SCOREBOARD">("LIST");
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const { ownerId } = useOwnerId();
-
-  const handleSelectGame = (game: Game) => {
-    setSelectedGame(game);
-    setView("SCOREBOARD");
-  };
-
-  const handleGameCreated = (game: Game) => {
-    setSelectedGame(game);
-    setView("SCOREBOARD");
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
@@ -63,28 +50,15 @@ function App() {
       </header>
 
       <main className="py-12">
-        {view === "LIST" && (
-          <GameList
-            onSelectGame={handleSelectGame}
-            onNewGame={() => setView("CREATE")}
+        <Routes>
+          <Route path="/" element={<GameList />} />
+          <Route
+            path="/games/new"
+            element={<NewGameForm ownerId={ownerId} />}
           />
-        )}
-        {view === "CREATE" && (
-          <NewGameForm
-            ownerId={ownerId}
-            onGameCreated={handleGameCreated}
-            onCancel={() => setView("LIST")}
-          />
-        )}
-        {view === "SCOREBOARD" && selectedGame && (
-          <Scoreboard
-            game={selectedGame}
-            onBack={() => {
-              setSelectedGame(null);
-              setView("LIST");
-            }}
-          />
-        )}
+          <Route path="/games/:gameId" element={<ScoreboardPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
       <footer className="max-w-6xl mx-auto px-4 py-12 border-t border-slate-200">

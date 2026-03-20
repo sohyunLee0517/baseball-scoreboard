@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getGames, deleteGame } from "../api";
 import { Game } from "../types";
 import { useOwnerId } from "../ownerId-store";
 import { useSchoolInfoForOwnerPlayer } from "../hooks/useSchoolInfoByPlayerIds";
 
-interface Props {
-  onSelectGame: (game: Game) => void;
-  onNewGame: () => void;
-}
-
-export const GameList: React.FC<Props> = ({ onSelectGame, onNewGame }) => {
+export const GameList: React.FC = () => {
+  const navigate = useNavigate();
   const { ownerId } = useOwnerId();
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +95,7 @@ export const GameList: React.FC<Props> = ({ onSelectGame, onNewGame }) => {
           </p>
         </div>
         <button
-          onClick={onNewGame}
+          onClick={() => navigate("/games/new")}
           className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all flex items-center gap-2"
         >
           <svg
@@ -122,7 +119,9 @@ export const GameList: React.FC<Props> = ({ onSelectGame, onNewGame }) => {
             <div
               key={game.id}
               className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:border-blue-100 transition-all cursor-pointer"
-              onClick={() => onSelectGame(game)}
+              onClick={() =>
+                game.id != null && navigate(`/games/${game.id}`)
+              }
             >
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
@@ -240,7 +239,7 @@ export const GameList: React.FC<Props> = ({ onSelectGame, onNewGame }) => {
               Start your first game and keep track of every run and hit!
             </p>
             <button
-              onClick={onNewGame}
+              onClick={() => navigate("/games/new")}
               className="text-blue-600 font-bold hover:underline"
             >
               Create New Game Record →

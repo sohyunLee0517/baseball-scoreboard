@@ -1,18 +1,13 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { createGame } from "../api";
-import { Game } from "../types";
 
 interface Props {
   ownerId: string | null;
-  onGameCreated: (game: Game) => void;
-  onCancel: () => void;
 }
 
-export const NewGameForm: React.FC<Props> = ({
-  ownerId,
-  onGameCreated,
-  onCancel,
-}) => {
+export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
@@ -31,7 +26,11 @@ export const NewGameForm: React.FC<Props> = ({
         players: [],
         status: "IN_PROGRESS",
       });
-      onGameCreated(newGame);
+      if (newGame.id != null) {
+        navigate(`/games/${newGame.id}`);
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       console.error(error);
       alert("Failed to start game. Please check your connection.");
@@ -43,7 +42,7 @@ export const NewGameForm: React.FC<Props> = ({
   return (
     <div className="max-w-xl mx-auto px-4">
       <button
-        onClick={onCancel}
+        onClick={() => navigate("/")}
         className="mb-6 text-gray-400 hover:text-gray-600 flex items-center text-sm font-bold transition"
       >
         <svg
