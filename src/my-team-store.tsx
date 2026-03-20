@@ -14,10 +14,13 @@ import { useOwnerId } from "./ownerId-store";
 /**
  * 전역 스토어: 학교 정보 + 학교 소속 선수 리스트를 한곳에 둡니다 (별도 훅으로 또 부르지 않음).
  * - `school`, `schoolName`: 학교 메타
- * - `players`: `getSchoolPlayersByName` → `GET /api/school/by-name/players?name=...`
+ * - `players`: `getSchoolPlayersByName` 응답을 그대로 둡니다. `id`/`playerId`는 API 값을 바꾸지 않습니다.
  */
 
-/** 스토어의 `players`로 id → 선수 조회 맵 (엔트리 UI·제출용). id는 문자열로 와도 파싱합니다. */
+/**
+ * 스토어의 `players`로 id → 선수 조회 맵 (엔트리 UI·제출용).
+ * 맵 키용 숫자 id만 `parseSchoolPlayerId`로 뽑고, 원본 객체는 spread — API의 선수 식별 값은 유지됩니다.
+ */
 export function buildSchoolPlayerByIdMap(
   players: SchoolPlayerListItem[],
 ): Map<number, SchoolPlayerWithNumericId> {
@@ -87,7 +90,6 @@ export const MyTeamProvider: React.FC<{ children: React.ReactNode }> = ({
 
         const { school, players } =
           await fetchSchoolInfoBySchoolName(schoolName);
-
         if (cancelled) return;
         setState({
           schoolName,

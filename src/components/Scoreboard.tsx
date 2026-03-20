@@ -1,6 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Game, Inning, Player } from "../types";
 import { updateGame } from "../api";
+import { useMyTeam } from "../my-team-store";
+import { getMyTeamDisplayName } from "../myTeamDisplayName";
+import { parseSchoolPlayerId } from "../school-api";
+import { normalizeRosterSchoolPlayerIds } from "../normalizeRosterSchoolPlayerIds";
+
+/** 내 팀이 HOME/AWAY 중 어디인지 — 경기 이름표와 스토어 학교명으로 매칭, 실패 시 명단 다수 기준. */
+function resolveMyTeamSide(
+  game: Game,
+  myTeamLabel: string,
+  rosterPlayers: Player[],
+): "HOME" | "AWAY" {
+  const m = myTeamLabel.trim();
+  const h = game.homeTeam.trim();
+  const a = game.awayTeam.trim();
+  if (h === m) return "HOME";
+  if (a === m) return "AWAY";
+  const home = rosterPlayers.filter((p) => p.team === "HOME").length;
+  const away = rosterPlayers.filter((p) => p.team === "AWAY").length;
+  if (home > away) return "HOME";
+  if (away > home) return "AWAY";
+  if (rosterPlayers[0]) return rosterPlayers[0].team;
+  return "HOME";
+}
 
 interface Props {
   game: Game;
@@ -16,6 +39,58 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [currentInning, setCurrentInning] = useState(1);
   const [currentSide, setCurrentSide] = useState<"TOP" | "BOTTOM">("TOP");
+  const myTeam = useMyTeam();
+  const myTeamLabel = getMyTeamDisplayName(myTeam);
+  const myTeamSide = useMemo(
+    () => resolveMyTeamSide(game, myTeamLabel, players),
+    [game, myTeamLabel, players],
+  );
+
+  /** 학교에 등록된 선수만 — id는 `parseSchoolPlayerId`로 통일 */
+  const schoolPlayersForPick = useMemo(() => {
+    const rows: {
+      id: number;
+      name: string;
+      backNumber: string;
+      position: string;
+    }[] = [];
+    for (const sp of myTeam.players) {
+      const id = parseSchoolPlayerId(sp);
+      if (id == null) continue;
+      rows.push({
+        id,
+        name: sp.name?.trim() || `#${id}`,
+        backNumber: sp.backNumber?.trim() ?? "",
+        position: sp.position?.trim() || "Bench",
+      });
+    }
+    rows.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    return rows;
+  }, [myTeam.players]);
+
+  const schoolPlayerIdsKey = useMemo(
+    () =>
+      schoolPlayersForPick
+        .map((r) => r.id)
+        .sort((a, b) => a - b)
+        .join(","),
+    [schoolPlayersForPick],
+  );
+
+  useEffect(() => {
+    if (myTeam.loading || !schoolPlayerIdsKey) return;
+    setPlayers((prev) =>
+      normalizeRosterSchoolPlayerIds(prev, myTeam.players),
+    );
+  }, [schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
+
+  const availableSchoolPlayers = useMemo(
+    () =>
+      schoolPlayersForPick.filter((sp) => !players.some((p) => p.id === sp.id)),
+    [schoolPlayersForPick, players],
+  );
+
+  const [selectedSchoolPlayerId, setSelectedSchoolPlayerId] = useState("");
 
   // Initialize innings grid if empty
   useEffect(() => {
@@ -80,6 +155,12 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         players,
       });
       setGame(updatedGame);
+      setPlayers(
+        normalizeRosterSchoolPlayerIds(
+          updatedGame.players || [],
+          myTeam.players,
+        ),
+      );
       alert("Saved successfully!");
     } catch (e) {
       console.error(e);
@@ -407,54 +488,75 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           </div>
 
           <div className="pt-4 border-t border-gray-100 space-y-3">
-            <div className="grid grid-cols-[2fr_1fr_1fr] gap-2">
-              <input
-                id="p-name"
-                type="text"
-                placeholder="Player Name"
-                className="text-sm border rounded-lg px-3 py-2 outline-none focus:border-blue-400"
-              />
-              <input
-                id="p-num"
-                type="text"
-                placeholder="#"
-                className="text-sm border rounded-lg px-3 py-2 outline-none focus:border-blue-400"
-              />
-              <select
-                id="p-team"
-                className="text-sm border rounded-lg px-2 py-2 bg-white outline-none focus:border-blue-400"
-              >
-                <option value="AWAY">Away</option>
-                <option value="HOME">Home</option>
-              </select>
-            </div>
-            <button
-              onClick={() => {
-                const name = (
-                  document.getElementById("p-name") as HTMLInputElement
-                ).value;
-                const num = (
-                  document.getElementById("p-num") as HTMLInputElement
-                ).value;
-                const team = (
-                  document.getElementById("p-team") as HTMLSelectElement
-                ).value as any;
-                if (name) {
-                  setPlayers([
-                    ...players,
-                    { name, backNumber: num, team, position: "Bench" },
-                  ]);
-                  (
-                    document.getElementById("p-name") as HTMLInputElement
-                  ).value = "";
-                  (document.getElementById("p-num") as HTMLInputElement).value =
-                    "";
-                }
-              }}
-              className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition"
-            >
-              Add Player
-            </button>
+            <p className="text-xs text-gray-500">
+              추가: 우리 팀{" "}
+              <span className="font-semibold text-gray-700">
+                {myTeamSide === "HOME" ? game.homeTeam : game.awayTeam}
+              </span>{" "}
+              ({myTeamSide === "HOME" ? "HOME" : "AWAY"}) · 학교 등록 선수만
+            </p>
+            {myTeam.loading ? (
+              <p className="text-xs text-gray-400">
+                학교 선수 목록을 불러오는 중…
+              </p>
+            ) : schoolPlayersForPick.length === 0 ? (
+              <p className="text-xs text-amber-600">
+                학교에 등록된 선수가 없거나, 선수 ID를 확인할 수 없습니다.
+              </p>
+            ) : (
+              <>
+                <select
+                  value={selectedSchoolPlayerId}
+                  onChange={(e) => setSelectedSchoolPlayerId(e.target.value)}
+                  className="w-full text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
+                >
+                  <option value="">선수 선택</option>
+                  {availableSchoolPlayers.map((sp) => (
+                    <option key={sp.id} value={String(sp.id)}>
+                      {sp.name}
+                      {sp.backNumber ? ` · #${sp.backNumber}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {availableSchoolPlayers.length === 0 && (
+                  <p className="text-xs text-gray-400">
+                    추가할 학교 선수가 없습니다. (이미 명단에 모두 포함됨)
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const team = myTeamSide;
+                    const pid = Number.parseInt(selectedSchoolPlayerId, 10);
+                    if (!Number.isFinite(pid)) return;
+                    const sp = schoolPlayersForPick.find((s) => s.id === pid);
+                    if (!sp) return;
+                    if (players.some((p) => p.id === pid)) {
+                      alert("This player is already in the roster.");
+                      return;
+                    }
+                    setPlayers([
+                      ...players,
+                      {
+                        id: sp.id,
+                        name: sp.name,
+                        backNumber: sp.backNumber,
+                        team,
+                        position: sp.position,
+                      },
+                    ]);
+                    setSelectedSchoolPlayerId("");
+                  }}
+                  disabled={
+                    selectedSchoolPlayerId === "" ||
+                    availableSchoolPlayers.length === 0
+                  }
+                  className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add Player
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

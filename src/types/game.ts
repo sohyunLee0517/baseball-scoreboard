@@ -12,6 +12,7 @@ export type TopBottom = "TOP" | "BOTTOM";
 export type GameStatus = "IN_PROGRESS" | "FINISHED";
 
 export interface Player {
+  /** 학교 선수 API와 동일한 선수 id (생성·수정 요청에 그대로 포함) */
   id?: number;
   name: string;
   team: TeamSide;
