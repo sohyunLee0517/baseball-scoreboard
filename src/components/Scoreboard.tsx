@@ -1,10 +1,41 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Game, Inning, Player } from "../types";
+import { Game, Inning, Player, TeamLineScoreboard } from "../types";
 import { updateGame } from "../api";
 import { useMyTeam } from "../my-team-store";
 import { getMyTeamDisplayName } from "../myTeamDisplayName";
 import { parseSchoolPlayerId } from "../school-api";
 import { normalizeRosterSchoolPlayerIds } from "../normalizeRosterSchoolPlayerIds";
+import { PlayerInningRecordsModal } from "./PlayerInningRecordsModal";
+
+function padInningRecords(records?: string[]): string[] {
+  const out = [...(records ?? [])];
+  while (out.length < 9) out.push("");
+  return out.slice(0, 9);
+}
+
+/** 모달에 저장한 회별 기록을 쉼표로 이어 한 줄 요약 */
+function summarizeInningRecords(records?: string[]): string {
+  return (records ?? [])
+    .map((s) => s?.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function lineFromInnings(
+  innings: Inning[],
+  team: "HOME" | "AWAY",
+): TeamLineScoreboard {
+  const targetSide = team === "HOME" ? "BOTTOM" : "TOP";
+  const rows = innings.filter((inn) => inn.topBottom === targetSide);
+  const sum = (field: "runs" | "hits" | "errors" | "balls") =>
+    rows.reduce((s, inn) => s + (inn[field] ?? 0), 0);
+  return {
+    runs: sum("runs"),
+    hits: sum("hits"),
+    errors: sum("errors"),
+    balls: sum("balls"),
+  };
+}
 
 /** 내 팀이 HOME/AWAY 중 어디인지 — 경기 이름표와 스토어 학교명으로 매칭, 실패 시 명단 다수 기준. */
 function resolveMyTeamSide(
@@ -37,8 +68,16 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   const [innings, setInnings] = useState<Inning[]>(initialGame.innings || []);
   const [players, setPlayers] = useState<Player[]>(initialGame.players || []);
   const [isSaving, setIsSaving] = useState(false);
-  const [currentInning, setCurrentInning] = useState(1);
-  const [currentSide, setCurrentSide] = useState<"TOP" | "BOTTOM">("TOP");
+  const [awayLine, setAwayLine] = useState<TeamLineScoreboard>(
+    () =>
+      initialGame.awayLineScoreboard ??
+      lineFromInnings(initialGame.innings ?? [], "AWAY"),
+  );
+  const [homeLine, setHomeLine] = useState<TeamLineScoreboard>(
+    () =>
+      initialGame.homeLineScoreboard ??
+      lineFromInnings(initialGame.innings ?? [], "HOME"),
+  );
   const myTeam = useMyTeam();
   const myTeamLabel = getMyTeamDisplayName(myTeam);
   const myTeamSide = useMemo(
@@ -61,7 +100,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         id,
         name: sp.name?.trim() || `#${id}`,
         backNumber: sp.backNumber?.trim() ?? "",
-        position: sp.position?.trim() || "Bench",
+        position: sp.position?.trim() || "",
       });
     }
     rows.sort((a, b) => a.name.localeCompare(b.name, "ko"));
@@ -89,6 +128,31 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   );
 
   const [selectedSchoolPlayerId, setSelectedSchoolPlayerId] = useState("");
+  const [modalPlayerIndex, setModalPlayerIndex] = useState<number | null>(null);
+  const [draftInningRecords, setDraftInningRecords] = useState<string[]>(() =>
+    Array(9).fill(""),
+  );
+
+  const openPlayerRecordModal = (idx: number) => {
+    setDraftInningRecords(padInningRecords(players[idx]?.inningRecords));
+    setModalPlayerIndex(idx);
+  };
+
+  const savePlayerInningRecords = () => {
+    if (modalPlayerIndex === null) return;
+    setPlayers((prev) =>
+      prev.map((pl, i) =>
+        i === modalPlayerIndex
+          ? { ...pl, inningRecords: padInningRecords(draftInningRecords) }
+          : pl,
+      ),
+    );
+    setModalPlayerIndex(null);
+  };
+
+  const closePlayerRecordModal = () => {
+    setModalPlayerIndex(null);
+  };
 
   // Initialize innings grid if empty
   useEffect(() => {
@@ -101,6 +165,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           runs: 0,
           hits: 0,
           errors: 0,
+          balls: 0,
         });
         newInnings.push({
           inningNumber: i,
@@ -108,9 +173,12 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           runs: 0,
           hits: 0,
           errors: 0,
+          balls: 0,
         });
       }
       setInnings(newInnings);
+      setAwayLine(lineFromInnings(newInnings, "AWAY"));
+      setHomeLine(lineFromInnings(newInnings, "HOME"));
     }
   }, []);
 
@@ -129,30 +197,27 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
     );
   };
 
-  const calculateTotal = (
-    team: "HOME" | "AWAY",
-    field: "runs" | "hits" | "errors" = "runs",
-  ) => {
-    const targetSide = team === "HOME" ? "BOTTOM" : "TOP";
-    return innings
-      .filter((inn) => inn.topBottom === targetSide)
-      .reduce((sum, inn) => sum + ((inn[field] as number) || 0), 0);
-  };
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const homeScore = calculateTotal("HOME");
-      const awayScore = calculateTotal("AWAY");
-
       const updatedGame = await updateGame(game.id!, {
         ...game,
-        homeScore,
-        awayScore,
+        homeScore: homeLine.runs,
+        awayScore: awayLine.runs,
+        awayLineScoreboard: awayLine,
+        homeLineScoreboard: homeLine,
         innings,
         players,
       });
       setGame(updatedGame);
+      setAwayLine(
+        updatedGame.awayLineScoreboard ??
+          lineFromInnings(updatedGame.innings ?? [], "AWAY"),
+      );
+      setHomeLine(
+        updatedGame.homeLineScoreboard ??
+          lineFromInnings(updatedGame.innings ?? [], "HOME"),
+      );
       setPlayers(
         normalizeRosterSchoolPlayerIds(
           updatedGame.players || [],
@@ -174,6 +239,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         runs: 0,
         hits: 0,
         errors: 0,
+        balls: 0,
       }
     );
   };
@@ -246,7 +312,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
       {/* Main Scoreboard UI */}
       <div className="bg-slate-900 text-white rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800">
-        <div className="grid grid-cols-[1fr_repeat(9,auto)_repeat(3,auto)] text-center items-center">
+        <div className="grid grid-cols-[1fr_repeat(9,auto)_repeat(4,auto)] text-center items-center">
           {/* Header Row */}
           <div className="p-4 text-left font-bold text-slate-500 text-xs uppercase tracking-widest">
             Team
@@ -254,19 +320,22 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           {[...Array(TOTAL_INNINGS)].map((_, i) => (
             <div
               key={i}
-              className="px-4 py-4 text-xs font-bold text-slate-500 border-l border-slate-800"
+              className="text-xs font-bold text-slate-500 border-l border-slate-800"
             >
               {i + 1}
             </div>
           ))}
-          <div className="px-6 py-4 font-black text-amber-400 border-l-2 border-slate-700">
+          <div className="font-black text-amber-400 border-l-2 border-slate-700">
             R
           </div>
-          <div className="px-4 py-4 font-bold text-slate-400 border-l border-slate-800">
+          <div className="font-bold text-slate-400 border-l border-slate-800">
             H
           </div>
-          <div className="px-4 py-4 font-bold text-slate-400 border-l border-slate-800">
+          <div className="font-bold text-slate-400 border-l border-slate-800">
             E
+          </div>
+          <div className="font-bold text-slate-400 border-l border-slate-800">
+            B
           </div>
 
           {/* Away Team Row */}
@@ -296,14 +365,61 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               />
             </div>
           ))}
-          <div className="px-6 py-4 border-l-2 border-t border-slate-700 bg-slate-800/50 text-3xl font-black text-amber-400">
-            {calculateTotal("AWAY", "runs")}
+          <div className=" border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[4.5rem] bg-transparent text-center font-mono text-3xl font-black text-amber-400 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={awayLine.runs}
+              onChange={(e) =>
+                setAwayLine((prev) => ({
+                  ...prev,
+                  runs: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
           </div>
-          <div className="px-4 py-4 border-l border-t border-slate-800 bg-slate-800/20 text-xl font-bold text-slate-300">
-            {calculateTotal("AWAY", "hits")}
+          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={awayLine.hits}
+              onChange={(e) =>
+                setAwayLine((prev) => ({
+                  ...prev,
+                  hits: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
           </div>
-          <div className="px-4 py-4 border-l border-t border-slate-800 bg-slate-800/20 text-xl font-bold text-slate-300">
-            {calculateTotal("AWAY", "errors")}
+          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={awayLine.errors}
+              onChange={(e) =>
+                setAwayLine((prev) => ({
+                  ...prev,
+                  errors: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
+          </div>
+          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={awayLine.balls}
+              onChange={(e) =>
+                setAwayLine((prev) => ({
+                  ...prev,
+                  balls: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
           </div>
 
           {/* Home Team Row */}
@@ -333,116 +449,66 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               />
             </div>
           ))}
-          <div className="px-6 py-4 border-l-2 border-t border-slate-700 bg-slate-800/50 text-3xl font-black text-amber-400">
-            {calculateTotal("HOME", "runs")}
+          <div className="border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[4.5rem] bg-transparent text-center font-mono text-3xl font-black text-amber-400 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={homeLine.runs}
+              onChange={(e) =>
+                setHomeLine((prev) => ({
+                  ...prev,
+                  runs: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
           </div>
-          <div className="px-4 py-4 border-l border-t border-slate-800 bg-slate-800/20 text-xl font-bold text-slate-300">
-            {calculateTotal("HOME", "hits")}
+          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={homeLine.hits}
+              onChange={(e) =>
+                setHomeLine((prev) => ({
+                  ...prev,
+                  hits: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
           </div>
-          <div className="px-4 py-4 border-l border-t border-slate-800 bg-slate-800/20 text-xl font-bold text-slate-300">
-            {calculateTotal("HOME", "errors")}
+          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={homeLine.errors}
+              onChange={(e) =>
+                setHomeLine((prev) => ({
+                  ...prev,
+                  errors: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
+          </div>
+          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+            <input
+              type="number"
+              min={0}
+              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              value={homeLine.balls}
+              onChange={(e) =>
+                setHomeLine((prev) => ({
+                  ...prev,
+                  balls: parseInt(e.target.value, 10) || 0,
+                }))
+              }
+            />
           </div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Detailed Input (Current Inning Focus) */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-gray-700">Inning Detail</h3>
-            <div className="flex bg-gray-100 p-1 rounded-lg">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setCurrentInning(n)}
-                  className={`w-8 h-8 rounded text-sm font-bold transition ${currentInning === n ? "bg-white text-blue-600 shadow" : "text-gray-400 hover:text-gray-600"}`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {["TOP", "BOTTOM"].map((side) => (
-              <div
-                key={side}
-                className={`p-4 rounded-xl border-2 transition ${currentSide === side ? "border-blue-500 bg-blue-50/30" : "border-gray-50"}`}
-              >
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-bold text-gray-500 uppercase tracking-tighter">
-                    {side === "TOP"
-                      ? `AWAY (${game.awayTeam})`
-                      : `HOME (${game.homeTeam})`}
-                  </span>
-                  <button
-                    onClick={() => setCurrentSide(side as any)}
-                    className={`text-xs px-2 py-1 rounded ${currentSide === side ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-600"}`}
-                  >
-                    Active
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">
-                      Runs
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full bg-white border border-gray-200 rounded-lg p-2 text-center font-bold"
-                      value={getInningData(currentInning, side as any).runs}
-                      onChange={(e) =>
-                        handleScoreChange(
-                          currentInning,
-                          side as any,
-                          "runs",
-                          parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">
-                      Hits
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full bg-white border border-gray-200 rounded-lg p-2 text-center font-bold"
-                      value={getInningData(currentInning, side as any).hits}
-                      onChange={(e) =>
-                        handleScoreChange(
-                          currentInning,
-                          side as any,
-                          "hits",
-                          parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">
-                      Errors
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full bg-white border border-gray-200 rounded-lg p-2 text-center font-bold"
-                      value={getInningData(currentInning, side as any).errors}
-                      onChange={(e) =>
-                        handleScoreChange(
-                          currentInning,
-                          side as any,
-                          "errors",
-                          parseInt(e.target.value) || 0,
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
+      <div className="grid gap-6">
         {/* Roster Management */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
@@ -451,70 +517,84 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           </div>
 
           <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-2">
-            {players.map((p, idx) => (
-              <div
-                key={p.id != null ? `id-${p.id}` : `row-${idx}-${p.name}`}
-                className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100 text-sm"
-              >
-                <span
-                  className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full font-bold text-white ${p.team === "HOME" ? "bg-indigo-500" : "bg-orange-500"}`}
+            {players.map((p, idx) => {
+              const recordsSummary = summarizeInningRecords(p.inningRecords);
+              return (
+                <div
+                  key={p.id != null ? `id-${p.id}` : `row-${idx}-${p.name}`}
+                  className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100 text-sm"
                 >
-                  {idx + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-gray-800">{p.name}</div>
-                  <div className="text-[10px] text-gray-400 uppercase font-medium">
-                    {p.position} • {p.team}
+                  <span
+                    className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-full font-bold text-white ${p.team === "HOME" ? "bg-indigo-500" : "bg-orange-500"}`}
+                  >
+                    {idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openPlayerRecordModal(idx)}
+                    className="flex-1 min-w-0 text-left rounded-lg px-1 py-0.5 -mx-1 hover:bg-gray-200/90 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  >
+                    <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 break-words">
+                      <span className="font-bold text-gray-900">{p.name}</span>
+                      {recordsSummary ? (
+                        <span className="text-[13px] font-normal text-gray-500 leading-snug">
+                          {recordsSummary}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-[10px] text-gray-400 uppercase font-medium">
+                      {p.position} • {p.team}
+                    </div>
+                  </button>
+                  <div className="flex shrink-0 flex-col gap-0.5">
+                    <button
+                      type="button"
+                      aria-label="Move up"
+                      disabled={idx === 0}
+                      onClick={() => reorderRosterPlayer(idx, idx - 1)}
+                      className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move down"
+                      disabled={idx === players.length - 1}
+                      onClick={() => reorderRosterPlayer(idx, idx + 1)}
+                      className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      ↓
+                    </button>
                   </div>
-                </div>
-                <div className="flex shrink-0 flex-col gap-0.5">
                   <button
                     type="button"
-                    aria-label="Move up"
-                    disabled={idx === 0}
-                    onClick={() => reorderRosterPlayer(idx, idx - 1)}
-                    className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                    onClick={() =>
+                      setPlayers((prev) => {
+                        const filtered = prev.filter((_, i) => i !== idx);
+                        return filtered.map((row, i) => ({
+                          ...row,
+                          lineupOrder: i + 1,
+                        }));
+                      })
+                    }
+                    className="text-gray-300 hover:text-red-500 transition shrink-0"
                   >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move down"
-                    disabled={idx === players.length - 1}
-                    onClick={() => reorderRosterPlayer(idx, idx + 1)}
-                    className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
-                  >
-                    ↓
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPlayers((prev) => {
-                      const filtered = prev.filter((_, i) => i !== idx);
-                      return filtered.map((row, i) => ({
-                        ...row,
-                        lineupOrder: i + 1,
-                      }));
-                    })
-                  }
-                  className="text-gray-300 hover:text-red-500 transition shrink-0"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ))}
+              );
+            })}
             {players.length === 0 && (
               <div className="text-center py-8 text-gray-400 text-xs italic border-2 border-dashed rounded-xl">
                 No players registered.
@@ -596,6 +676,19 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           </div>
         </div>
       </div>
+
+      <PlayerInningRecordsModal
+        open={modalPlayerIndex !== null}
+        playerName={
+          modalPlayerIndex !== null && players[modalPlayerIndex]
+            ? players[modalPlayerIndex]!.name
+            : ""
+        }
+        values={draftInningRecords}
+        onChange={setDraftInningRecords}
+        onClose={closePlayerRecordModal}
+        onSave={savePlayerInningRecords}
+      />
     </div>
   );
 };

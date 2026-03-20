@@ -20,6 +20,8 @@ export interface Player {
   backNumber?: string;
   /** 타순(엔트리) — 1부터 */
   lineupOrder?: number;
+  /** 1~9회 개인 기록(타석 결과 등) — 인덱스 0 = 1회 */
+  inningRecords?: string[];
 }
 
 export interface Inning {
@@ -29,6 +31,16 @@ export interface Inning {
   runs: number;
   hits: number;
   errors: number;
+  /** 볼 카운트 등 — 스코어보드 B 열 합계용 */
+  balls: number;
+}
+
+/** 스코어보드 우측 R / H / E / B 팀 합계(직접 입력·저장) */
+export interface TeamLineScoreboard {
+  runs: number;
+  hits: number;
+  errors: number;
+  balls: number;
 }
 
 export interface Game {
@@ -43,4 +55,8 @@ export interface Game {
   players: Player[];
   innings: Inning[];
   date?: string;
+  /** 원정 팀 R/H/E/B — 없으면 이닝 합으로 초기화 */
+  awayLineScoreboard?: TeamLineScoreboard;
+  /** 홈 팀 R/H/E/B */
+  homeLineScoreboard?: TeamLineScoreboard;
 }

@@ -10,6 +10,7 @@ export type {
   Game,
   Inning,
   Player,
+  TeamLineScoreboard,
   TeamSide,
   TopBottom,
 } from "./game";
