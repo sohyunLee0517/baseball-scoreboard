@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(psql:*)",
+      "Bash(DATABASE_URL=\"postgresql://sean@localhost:5432/baseball_db\" npx tsx -e \"import 'dotenv/config'; console.log\\(process.env.DATABASE_URL\\)\")",
+      "Bash(DATABASE_URL=\"postgresql://sean@localhost:5432/baseball_db\" npx tsx -e \"\nimport { Pool } from 'pg';\nconst pool = new Pool\\({ connectionString: process.env.DATABASE_URL }\\);\nconst res = await pool.query\\('SELECT current_database\\(\\)'\\);\nconsole.log\\(res.rows[0]\\);\nawait pool.end\\(\\);\n\")",
+      "Bash(DATABASE_URL=\"postgresql://sean@localhost:5432/baseball_db\" npx tsx -e \"\nimport { PrismaPg } from '@prisma/adapter-pg';\nimport { PrismaClient } from '@prisma/client';\nconst url = process.env.DATABASE_URL;\nconsole.log\\('URL:', url\\);\nconst adapter = new PrismaPg\\({ connectionString: url }\\);\nconst prisma = new PrismaClient\\({ adapter }\\);\nconst r = await prisma.\\\\$queryRaw\\\\`SELECT current_database\\(\\)\\\\`;\nconsole.log\\(r\\);\n\" 2>&1)",
+      "Bash(timeout 5 npm run server)",
+      "Bash(find node_modules/.prisma -name *.js)",
+      "Bash(env)",
+      "Bash(npm run:*)",
+      "Read(//private/etc/**)",
+      "Bash(getent services:*)",
+      "Bash(curl:*)",
+      "Bash(printenv:*)",
+      "Bash(ps eww:*)",
+      "Bash(node:*)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"어\" npx prisma db push --force-reset 2>&1)",
+      "Bash(xargs kill:*)"
+    ]
+  }
+}
