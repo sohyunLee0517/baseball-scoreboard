@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 type OwnerIdStore = {
   ownerId: string | null;
@@ -14,19 +15,21 @@ export const OwnerIdProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [ownerId, setOwnerId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("ownerId");
+    if (fromUrl) return fromUrl;
     return window.localStorage.getItem(OWNER_ID_STORAGE_KEY);
   });
 
-  // Initialize from URL query (?ownerId=...) once, only if localStorage doesn't already have a value.
+  const location = useLocation();
+
+  // When ?ownerId= is present, it wins over localStorage (shared links must match the URL).
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const oid = params.get("ownerId");
     if (!oid) return;
-    const stored = window.localStorage.getItem(OWNER_ID_STORAGE_KEY);
-    if (stored) return;
     setOwnerId(oid);
-    window.localStorage.setItem(OWNER_ID_STORAGE_KEY, oid);
-  }, []);
+  }, [location.search]);
 
   // Keep localStorage in sync
   useEffect(() => {
