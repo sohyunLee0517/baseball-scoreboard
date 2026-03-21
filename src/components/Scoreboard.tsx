@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Game,
   Inning,
@@ -141,16 +141,39 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
     setPlayers((prev) => normalizeRosterSchoolPlayerIds(prev, myTeam.players));
   }, [schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
 
+  const lastSyncedPitcherGameIdRef = useRef<number | undefined>(undefined);
+
+  /**
+   * - 경기 id가 바뀌면: 서버 투수 명단으로 맞춘 뒤(가능하면) 학교 id 정규화
+   * - 같은 경기에서 학교 목록만 늦게 오면: `prev`만 정규화(화면에서 추가한 투수 유지)
+   * 예전 분리 effect는 후행 effect가 정규화를 덮어쓰는 문제가 있었음
+   */
   useEffect(() => {
+    const gid = initialGame.id;
+    const gameChanged =
+      gid !== undefined && gid !== lastSyncedPitcherGameIdRef.current;
+
+    if (gameChanged) {
+      lastSyncedPitcherGameIdRef.current = gid;
+      const base = (initialGame.pitchers ?? []).map(pitcherRecordWithOuts);
+      if (myTeam.loading || !schoolPlayerIdsKey) {
+        setPitchers(base);
+        return;
+      }
+      setPitchers(normalizePitcherRecordsSchoolPlayerIds(base, myTeam.players));
+      return;
+    }
+
     if (myTeam.loading || !schoolPlayerIdsKey) return;
     setPitchers((prev) =>
       normalizePitcherRecordsSchoolPlayerIds(prev, myTeam.players),
     );
-  }, [schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
-
-  useEffect(() => {
-    setPitchers((initialGame.pitchers ?? []).map(pitcherRecordWithOuts));
-  }, [initialGame.id]);
+  }, [
+    initialGame.id,
+    schoolPlayerIdsKey,
+    myTeam.loading,
+    myTeam.players,
+  ]);
 
   const availableSchoolPlayers = useMemo(
     () =>

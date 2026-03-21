@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { GameList } from "./components/GameList";
 import { NewGameForm } from "./components/NewGameForm";
+import { PlayerRecordsPage } from "./components/PlayerRecordsPage";
 import { ScoreboardPage } from "./components/ScoreboardPage";
 import { useOwnerId } from "./ownerId-store";
 
@@ -57,6 +58,7 @@ function App() {
             element={<NewGameForm ownerId={ownerId} />}
           />
           <Route path="/games/:gameId" element={<ScoreboardPage />} />
+          <Route path="/players/:playerId" element={<PlayerRecordsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

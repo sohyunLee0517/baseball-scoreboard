@@ -4,6 +4,7 @@ import { getGames, deleteGame } from "../api";
 import { Game } from "../types";
 import { useOwnerId } from "../ownerId-store";
 import { useMyTeam } from "../my-team-store";
+import { parseSchoolPlayerId } from "../school-api";
 
 export const GameList: React.FC = () => {
   const navigate = useNavigate();
@@ -69,18 +70,41 @@ export const GameList: React.FC = () => {
         </div>
         {!myTeam.loading && myTeam.players.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
-              같은 학교 선수
-            </p>
+            <div className="mb-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                같은 학교 선수
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                아래 선수를 누르면, 해당 선수로 등록된 경기의{" "}
+                <span className="text-slate-600 font-semibold">
+                  개인 기록(타격·투구)
+                </span>
+                를 볼 수 있습니다.
+              </p>
+            </div>
             <ul className="flex flex-wrap gap-2 text-xs text-slate-700">
-              {myTeam.players.map((p, idx) => (
-                <li
-                  key={p.id ?? `p-${idx}`}
-                  className="rounded-full bg-slate-100 px-3 py-1"
-                >
-                  {p.name ?? `#${p.id ?? "?"}`}
-                </li>
-              ))}
+              {myTeam.players.map((p, idx) => {
+                const schoolId = parseSchoolPlayerId(p);
+                return (
+                  <li key={p.id ?? `p-${idx}`}>
+                    <button
+                      type="button"
+                      disabled={schoolId == null}
+                      onClick={() => {
+                        if (schoolId != null)
+                          navigate(`/players/${schoolId}`);
+                      }}
+                      className={`rounded-full px-3 py-1 font-medium transition ${
+                        schoolId != null
+                          ? "bg-slate-100 text-slate-800 cursor-pointer hover:bg-slate-200 hover:text-slate-900"
+                          : "bg-slate-50 text-slate-400 cursor-not-allowed"
+                      }`}
+                    >
+                      {p.name ?? `#${p.id ?? "?"}`}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

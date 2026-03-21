@@ -5,7 +5,7 @@
 ## 1. API 서버 준비 (먼저)
 
 - [ ] `server/` Express를 Railway·Render·EC2 등에 배포하거나, 이미 있는 API URL을 확정한다.
-- [ ] RDS 등 DB에 `DATABASE_URL` 연결, 마이그레이션 적용.
+- [ ] RDS 등 DB에 `DATABASE_URL` 연결, 마이그레이션 적용. (**`main` 기준**, `dev` 머지 불필요 — [database-aws-rds.md](./database-aws-rds.md) 참고)
 - [ ] API의 `CORS_ORIGIN`에 **Vercel 프론트 도메인**을 넣는다.  
   예: `https://baseball-scoreboard-one.vercel.app`, 로컬 개발용은 기존처럼 `http://localhost:5174`.
 
