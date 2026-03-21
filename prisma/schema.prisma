@@ -37,62 +37,87 @@ enum BatResult {
 }
 
 model Match {
-  id           String        @id @default(uuid())
-  date         DateTime
-  homeTeamId   String
-  awayTeamId   String
+  id           Int           @id @default(autoincrement())
+  ownerId      String
+  title        String
+  status       String        @default("IN_PROGRESS")
+  date         DateTime      @default(now())
   homeTeamName String
   awayTeamName String
+  homeScore    Int           @default(0)
+  awayScore    Int           @default(0)
+  createdAt    DateTime      @default(now())
   innings      Inning[]
+  players      MatchPlayer[]
   batRecords   BatRecord[]
   pitRecords   PitchRecord[]
-  createdAt    DateTime      @default(now())
+}
+
+model MatchPlayer {
+  id          Int    @id @default(autoincrement())
+  matchId     Int
+  match       Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerId    String @default("")
+  name        String
+  team        String
+  position    String @default("")
+  backNumber  String @default("")
+  lineupOrder Int    @default(0)
 }
 
 model Inning {
-  id        String @id @default(uuid())
-  matchId   String
-  match     Match  @relation(fields: [matchId], references: [id])
-  inningNo  Int
-  homeScore Int
-  awayScore Int
+  id      Int   @id @default(autoincrement())
+  matchId Int   @unique
+  match   Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  home1   Int?
+  home2   Int?
+  home3   Int?
+  home4   Int?
+  home5   Int?
+  home6   Int?
+  home7   Int?
+  home8   Int?
+  home9   Int?
+  home10  Int?
+  home11  Int?
+  home12  Int?
+  away1   Int?
+  away2   Int?
+  away3   Int?
+  away4   Int?
+  away5   Int?
+  away6   Int?
+  away7   Int?
+  away8   Int?
+  away9   Int?
+  away10  Int?
+  away11  Int?
+  away12  Int?
 }
 
 model BatRecord {
-  id            String         @id @default(uuid())
-  matchId       String
-  match         Match          @relation(fields: [matchId], references: [id])
-  playerId      String
-  playerName    String
-  position      String
-  batOrder      Int
-  atBats        Int
-  hits          Int
-  homeRuns      Int
-  walks         Int
-  strikeouts    Int
-  inningResults InningResult[]
-}
-
-model InningResult {
-  id          String    @id @default(uuid())
-  batRecordId String
-  batRecord   BatRecord @relation(fields: [batRecordId], references: [id])
-  inningNo    Int
-  result      BatResult
+  id         Int       @id @default(autoincrement())
+  matchId    Int
+  match      Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerId   String    @default("")
+  playerName String
+  position   String    @default("")
+  batOrder   Int       @default(0)
+  inningNo   Int
+  result     BatResult
 }
 
 model PitchRecord {
-  id         String @id @default(uuid())
-  matchId    String
-  match      Match  @relation(fields: [matchId], references: [id])
-  playerId   String
+  id         Int    @id @default(autoincrement())
+  matchId    Int
+  match      Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerId   String @default("")
   playerName String
-  innings    Float
-  hits       Int
-  runs       Int
-  earnedRuns Int
-  walks      Int
-  strikeouts Int
-  homeRuns   Int
+  innings    Float  @default(0)
+  hits       Int    @default(0)
+  runs       Int    @default(0)
+  earnedRuns Int    @default(0)
+  walks      Int    @default(0)
+  strikeouts Int    @default(0)
+  homeRuns   Int    @default(0)
 }
