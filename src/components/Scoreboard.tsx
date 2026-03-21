@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Game, Inning, Player, TeamLineScoreboard } from "../types";
+import {
+  Game,
+  Inning,
+  PitcherRecord,
+  Player,
+  TeamLineScoreboard,
+} from "../types";
 import { updateGame } from "../api";
 import { useMyTeam } from "../my-team-store";
 import { getMyTeamDisplayName } from "../myTeamDisplayName";
 import { parseSchoolPlayerId } from "../school-api";
-import { normalizeRosterSchoolPlayerIds } from "../normalizeRosterSchoolPlayerIds";
+import {
+  normalizePitcherRecordsSchoolPlayerIds,
+  normalizeRosterSchoolPlayerIds,
+} from "../normalizeRosterSchoolPlayerIds";
 import { batResultCodeToLabelKo } from "../constants/batResult";
 import { PlayerInningRecordsModal } from "./PlayerInningRecordsModal";
+import {
+  addOneOut,
+  outsToDisplayString,
+  pitcherRecordWithOuts,
+  subOneOut,
+} from "../utils/pitchingInnings";
 
 function padInningRecords(records?: string[]): string[] {
   const out = [...(records ?? [])];
@@ -69,6 +84,9 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   const [game, setGame] = useState<Game>(initialGame);
   const [innings, setInnings] = useState<Inning[]>(initialGame.innings || []);
   const [players, setPlayers] = useState<Player[]>(initialGame.players || []);
+  const [pitchers, setPitchers] = useState<PitcherRecord[]>(() =>
+    (initialGame.pitchers ?? []).map(pitcherRecordWithOuts),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [awayLine, setAwayLine] = useState<TeamLineScoreboard>(
     () =>
@@ -123,13 +141,32 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
     setPlayers((prev) => normalizeRosterSchoolPlayerIds(prev, myTeam.players));
   }, [schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
 
+  useEffect(() => {
+    if (myTeam.loading || !schoolPlayerIdsKey) return;
+    setPitchers((prev) =>
+      normalizePitcherRecordsSchoolPlayerIds(prev, myTeam.players),
+    );
+  }, [schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
+
+  useEffect(() => {
+    setPitchers((initialGame.pitchers ?? []).map(pitcherRecordWithOuts));
+  }, [initialGame.id]);
+
   const availableSchoolPlayers = useMemo(
     () =>
       schoolPlayersForPick.filter((sp) => !players.some((p) => p.id === sp.id)),
     [schoolPlayersForPick, players],
   );
 
+  const availableSchoolPlayersForPitchers = useMemo(
+    () =>
+      schoolPlayersForPick.filter((sp) => !pitchers.some((p) => p.id === sp.id)),
+    [schoolPlayersForPick, pitchers],
+  );
+
   const [selectedSchoolPlayerId, setSelectedSchoolPlayerId] = useState("");
+  const [selectedPitcherSchoolPlayerId, setSelectedPitcherSchoolPlayerId] =
+    useState("");
   const [modalPlayerIndex, setModalPlayerIndex] = useState<number | null>(null);
   const [draftInningRecords, setDraftInningRecords] = useState<string[]>(() =>
     Array(9).fill(""),
@@ -210,6 +247,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         homeLineScoreboard: { ...homeLine, runs: homeRunsFromInnings },
         innings,
         players,
+        pitchers,
       });
       setGame(updatedGame);
       setAwayLine(
@@ -226,10 +264,16 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           myTeam.players,
         ),
       );
-      alert("Saved successfully!");
+      setPitchers(
+        normalizePitcherRecordsSchoolPlayerIds(
+          updatedGame.pitchers ?? [],
+          myTeam.players,
+        ).map(pitcherRecordWithOuts),
+      );
+      alert("저장했습니다.");
     } catch (e) {
       console.error(e);
-      alert("Error saving game");
+      alert("저장하지 못했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -262,6 +306,12 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
     [innings],
   );
 
+  const updatePitcher = (index: number, patch: Partial<PitcherRecord>) => {
+    setPitchers((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    );
+  };
+
   const reorderRosterPlayer = (from: number, to: number) => {
     setPlayers((prev) => {
       if (to < 0 || to >= prev.length || from === to) return prev;
@@ -291,14 +341,14 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               clipRule="evenodd"
             />
           </svg>
-          Games List
+          경기 목록
         </button>
         <div className="text-center">
           <h2 className="text-2xl font-black text-gray-800 tracking-tight">
             {game.title}
           </h2>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">
-            {new Date(game.date!).toLocaleDateString()}
+          <p className="text-xs text-gray-400 font-medium tracking-widest">
+            {new Date(game.date!).toLocaleDateString("ko-KR")}
           </p>
         </div>
         <button
@@ -307,7 +357,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           className="bg-blue-600 text-white px-5 py-2 rounded-full font-bold hover:bg-blue-700 disabled:opacity-50 transition shadow-lg shadow-blue-100 flex items-center gap-2"
         >
           {isSaving ? (
-            "Saving..."
+            "저장 중…"
           ) : (
             <>
               <svg
@@ -322,7 +372,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                   clipRule="evenodd"
                 />
               </svg>
-              Save All
+              전체 저장
             </>
           )}
         </button>
@@ -332,8 +382,8 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
       <div className="bg-slate-900 text-white rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800">
         <div className="grid grid-cols-[1fr_repeat(9,auto)_repeat(4,auto)] text-center items-center">
           {/* Header Row */}
-          <div className="p-4 text-left font-bold text-slate-500 text-xs uppercase tracking-widest">
-            Team
+          <div className="p-4 text-left font-bold text-slate-500 text-xs tracking-widest">
+            팀
           </div>
           {[...Array(TOTAL_INNINGS)].map((_, i) => (
             <div
@@ -343,17 +393,29 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               {i + 1}
             </div>
           ))}
-          <div className="font-black text-amber-400 border-l-2 border-slate-700">
-            R
+          <div
+            className="font-black text-amber-400 border-l-2 border-slate-700 text-xs"
+            title="득점"
+          >
+            득
           </div>
-          <div className="font-bold text-slate-400 border-l border-slate-800">
-            H
+          <div
+            className="font-bold text-slate-400 border-l border-slate-800 text-xs"
+            title="안타"
+          >
+            안
           </div>
-          <div className="font-bold text-slate-400 border-l border-slate-800">
-            E
+          <div
+            className="font-bold text-slate-400 border-l border-slate-800 text-xs"
+            title="실책"
+          >
+            실
           </div>
-          <div className="font-bold text-slate-400 border-l border-slate-800">
-            B
+          <div
+            className="font-bold text-slate-400 border-l border-slate-800 text-xs"
+            title="볼(팀 합)"
+          >
+            볼
           </div>
 
           {/* Away Team Row */}
@@ -514,12 +576,12 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         </div>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Roster Management */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-gray-700">Player Roster</h3>
-            <div className="text-xs text-gray-400">Total: {players.length}</div>
+            <h3 className="font-bold text-gray-700">타자 명단</h3>
+            <div className="text-xs text-gray-400">총 {players.length}명</div>
           </div>
 
           <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-2">
@@ -552,7 +614,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                   <div className="flex shrink-0 flex-col gap-0.5">
                     <button
                       type="button"
-                      aria-label="Move up"
+                      aria-label="위로 이동"
                       disabled={idx === 0}
                       onClick={() => reorderRosterPlayer(idx, idx - 1)}
                       className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
@@ -561,7 +623,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     </button>
                     <button
                       type="button"
-                      aria-label="Move down"
+                      aria-label="아래로 이동"
                       disabled={idx === players.length - 1}
                       onClick={() => reorderRosterPlayer(idx, idx + 1)}
                       className="rounded px-1.5 py-0.5 text-xs font-bold text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent"
@@ -600,7 +662,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
             })}
             {players.length === 0 && (
               <div className="text-center py-8 text-gray-400 text-xs italic border-2 border-dashed rounded-xl">
-                No players registered.
+                등록된 선수가 없습니다.
               </div>
             )}
           </div>
@@ -611,7 +673,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               <span className="font-semibold text-gray-700">
                 {myTeamSide === "HOME" ? game.homeTeam : game.awayTeam}
               </span>{" "}
-              ({myTeamSide === "HOME" ? "HOME" : "AWAY"}) · 학교 등록 선수만
+              ({myTeamSide === "HOME" ? "홈" : "원정"}) · 학교 등록 선수만
             </p>
             {myTeam.loading ? (
               <p className="text-xs text-gray-400">
@@ -650,7 +712,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                     const sp = schoolPlayersForPick.find((s) => s.id === pid);
                     if (!sp) return;
                     if (players.some((p) => p.id === pid)) {
-                      alert("This player is already in the roster.");
+                      alert("이미 명단에 있는 선수입니다.");
                       return;
                     }
                     setPlayers([
@@ -672,7 +734,238 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                   }
                   className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add Player
+                  선수 추가
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* 투수 기록 — 라인업 없음; 학교 명단에서 추가 */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-bold text-gray-700">투수 기록</h3>
+            <div className="text-xs text-gray-400">총 {pitchers.length}명</div>
+          </div>
+
+          <div className="overflow-x-auto -mx-1 px-1 mb-4">
+            <table className="w-full text-sm border-collapse min-w-[32rem]">
+              <thead>
+                <tr className="text-left text-[11px] text-gray-500 border-b border-gray-100">
+                  <th className="pb-2 pr-2 font-semibold text-gray-700">
+                    투수
+                  </th>
+                  <th
+                    className="pb-2 px-0.5 font-semibold w-[7.5rem]"
+                    title="3아웃 = 1이닝. +/−로 타자 아웃을 누적 (0 → 0.1 → 0.2 → 1 …)"
+                  >
+                    이닝
+                  </th>
+                  <th className="pb-2 px-0.5 font-semibold w-11">안타</th>
+                  <th className="pb-2 px-0.5 font-semibold w-11">실점</th>
+                  <th className="pb-2 px-0.5 font-semibold w-11">4구</th>
+                  <th className="pb-2 px-0.5 font-semibold w-11">삼진</th>
+                  <th className="pb-2 px-0.5 font-semibold w-11">홈런</th>
+                  <th className="pb-2 w-8" aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                {pitchers.map((p, idx) => (
+                  <tr
+                    key={
+                      p.id != null ? `pit-${p.id}` : `pit-row-${idx}-${p.name}`
+                    }
+                    className="border-b border-gray-50 last:border-0"
+                  >
+                    <td className="py-2 pr-2 align-middle">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`w-7 h-7 shrink-0 flex items-center justify-center rounded-full text-[11px] font-bold text-white ${p.team === "HOME" ? "bg-indigo-500" : "bg-orange-500"}`}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span className="font-bold text-gray-900 truncate">
+                          {p.name}
+                          {p.backNumber ? (
+                            <span className="font-normal text-gray-500">
+                              {" "}
+                              · #{p.backNumber}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-1 px-0.5 align-middle">
+                      <div className="flex items-center justify-center gap-0.5">
+                        <button
+                          type="button"
+                          aria-label="아웃 한 개 빼기"
+                          onClick={() =>
+                            updatePitcher(idx, {
+                              pitchingOuts: subOneOut(p.pitchingOuts ?? 0),
+                            })
+                          }
+                          className="w-7 h-7 shrink-0 rounded-md border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-100 leading-none"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[2.75rem] text-center text-sm font-mono tabular-nums font-semibold text-gray-900">
+                          {outsToDisplayString(p.pitchingOuts ?? 0)}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="아웃 한 개 추가"
+                          onClick={() =>
+                            updatePitcher(idx, {
+                              pitchingOuts: addOneOut(p.pitchingOuts ?? 0),
+                            })
+                          }
+                          className="w-7 h-7 shrink-0 rounded-md border border-gray-200 text-base font-bold text-gray-600 hover:bg-gray-100 leading-none"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                    {(
+                      [
+                        "hitsAllowed",
+                        "runsAllowed",
+                        "walks",
+                        "strikeouts",
+                        "homeRunsAllowed",
+                      ] as const
+                    ).map((field) => (
+                      <td key={field} className="py-1 px-0.5 align-middle">
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-full max-w-[2.75rem] text-center text-sm border border-gray-200 rounded-md px-1 py-1 font-mono tabular-nums"
+                          value={p[field] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "") {
+                              updatePitcher(idx, { [field]: undefined });
+                              return;
+                            }
+                            const n = Number.parseInt(v, 10);
+                            if (Number.isFinite(n))
+                              updatePitcher(idx, { [field]: n });
+                          }}
+                        />
+                      </td>
+                    ))}
+                    <td className="py-1 align-middle text-right">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPitchers((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        className="text-gray-300 hover:text-red-500 transition shrink-0 inline-flex"
+                        aria-label="투수 삭제"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {pitchers.length === 0 && (
+              <div className="text-center py-8 text-gray-400 text-xs italic border-2 border-dashed rounded-xl mt-2">
+                등록된 투수가 없습니다.
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 space-y-3">
+            <p className="text-xs text-gray-500">
+              추가: 우리 팀{" "}
+              <span className="font-semibold text-gray-700">
+                {myTeamSide === "HOME" ? game.homeTeam : game.awayTeam}
+              </span>{" "}
+              ({myTeamSide === "HOME" ? "홈" : "원정"}) · 학교 등록 선수만
+            </p>
+            {myTeam.loading ? (
+              <p className="text-xs text-gray-400">
+                학교 선수 목록을 불러오는 중…
+              </p>
+            ) : schoolPlayersForPick.length === 0 ? (
+              <p className="text-xs text-amber-600">
+                학교에 등록된 선수가 없거나, 선수 ID를 확인할 수 없습니다.
+              </p>
+            ) : (
+              <>
+                <select
+                  value={selectedPitcherSchoolPlayerId}
+                  onChange={(e) =>
+                    setSelectedPitcherSchoolPlayerId(e.target.value)
+                  }
+                  className="w-full text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
+                >
+                  <option value="">선수 선택</option>
+                  {availableSchoolPlayersForPitchers.map((sp) => (
+                    <option key={sp.id} value={String(sp.id)}>
+                      {sp.name}
+                      {sp.backNumber ? ` · #${sp.backNumber}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {availableSchoolPlayersForPitchers.length === 0 && (
+                  <p className="text-xs text-gray-400">
+                    추가할 학교 선수가 없습니다. (이미 투수 명단에 포함됨)
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const team = myTeamSide;
+                    const pid = Number.parseInt(
+                      selectedPitcherSchoolPlayerId,
+                      10,
+                    );
+                    if (!Number.isFinite(pid)) return;
+                    const sp = schoolPlayersForPick.find((s) => s.id === pid);
+                    if (!sp) return;
+                    if (pitchers.some((p) => p.id === pid)) {
+                      alert("이미 투수 명단에 있습니다.");
+                      return;
+                    }
+                    setPitchers([
+                      ...pitchers,
+                      {
+                        id: sp.id,
+                        name: sp.name,
+                        backNumber: sp.backNumber,
+                        team,
+                        position: sp.position,
+                        pitchingOuts: 0,
+                        hitsAllowed: 0,
+                        runsAllowed: 0,
+                        walks: 0,
+                        strikeouts: 0,
+                        homeRunsAllowed: 0,
+                      },
+                    ]);
+                    setSelectedPitcherSchoolPlayerId("");
+                  }}
+                  disabled={
+                    selectedPitcherSchoolPlayerId === "" ||
+                    availableSchoolPlayersForPitchers.length === 0
+                  }
+                  className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  선수 추가
                 </button>
               </>
             )}

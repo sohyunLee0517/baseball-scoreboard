@@ -24,6 +24,27 @@ export interface Player {
   inningRecords?: string[];
 }
 
+/** 투수 기록 — 타순과 무관하게 명단에 추가한 선수만 (학교 선수 id 기준) */
+export interface PitcherRecord {
+  id?: number;
+  name: string;
+  team: TeamSide;
+  position?: string;
+  backNumber?: string;
+  /** 총 아웃 수 (3아웃 = 1이닝). 화면에는 0.1 → 0.2 → 1 형식으로 표시 */
+  pitchingOuts?: number;
+  /** 안타 */
+  hitsAllowed?: number;
+  /** 실점 */
+  runsAllowed?: number;
+  /** 4구(볼넷) */
+  walks?: number;
+  /** 삼진 */
+  strikeouts?: number;
+  /** 피홈런 */
+  homeRunsAllowed?: number;
+}
+
 export interface Inning {
   id?: number;
   inningNumber: number;
@@ -53,6 +74,8 @@ export interface Game {
   homeScore: number;
   awayScore: number;
   players: Player[];
+  /** 투수 기록 (라인업과 별도) */
+  pitchers?: PitcherRecord[];
   innings: Inning[];
   date?: string;
   /** 원정 팀 R/H/E/B — 없으면 이닝 합으로 초기화 */

@@ -10,6 +10,7 @@ export type {
   Game,
   Inning,
   Player,
+  PitcherRecord,
   TeamLineScoreboard,
   TeamSide,
   TopBottom,

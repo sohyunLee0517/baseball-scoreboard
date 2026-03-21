@@ -79,6 +79,7 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
           awayScore: body.awayScore ?? 0,
           innings: body.innings ?? [],
           players: body.players ?? [],
+          pitchers: body.pitchers ?? [],
           date: body.date ?? new Date().toISOString(),
         }
         games.push(game)

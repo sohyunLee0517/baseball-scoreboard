@@ -57,6 +57,33 @@ type InningData = {
   balls: number;
 };
 
+type PitcherPayload = {
+  id?: number;
+  name: string;
+  team?: string;
+  /** 총 아웃 수(DB `innings` 컬럼에 저장) */
+  pitchingOuts?: number;
+  hitsAllowed?: number;
+  runsAllowed?: number;
+  walks?: number;
+  strikeouts?: number;
+  homeRunsAllowed?: number;
+};
+
+/** DB 값(정수 아웃 또는 구버전 1.1 표기) → 총 아웃 수 */
+function inningsFloatFromDbToOuts(v: number): number {
+  if (!Number.isFinite(v) || v < 0) return 0;
+  const r = Math.round(v);
+  if (Math.abs(v - r) < 1e-4) return r;
+  const whole = Math.floor(v + 1e-9);
+  const frac = v - whole;
+  const t = Math.round(frac * 10);
+  if (t === 1) return whole * 3 + 1;
+  if (t === 2) return whole * 3 + 2;
+  if (Math.abs(frac) < 1e-4 || t === 0) return whole * 3;
+  return Math.max(0, Math.round(v * 3));
+}
+
 async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
   const { rows: matches } = await client.query(
     `SELECT id, "ownerId", title, status, "homeTeamName", "awayTeamName", "homeScore", "awayScore", date, "createdAt"
@@ -80,6 +107,12 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
   const { rows: batRecords } = await client.query(
     `SELECT "playerName", "batOrder", "inningNo", result
      FROM "BatRecord" WHERE "matchId" = $1`,
+    [id],
+  );
+
+  const { rows: pitchRows } = await client.query(
+    `SELECT "playerId", "playerName", team, innings, hits, runs, "earnedRuns", walks, strikeouts, "homeRuns"
+     FROM "PitchRecord" WHERE "matchId" = $1 ORDER BY id`,
     [id],
   );
 
@@ -108,6 +141,23 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
     };
   });
 
+  const pitcherList = (pitchRows as Record<string, unknown>[]).map((row) => {
+    const raw = String(row.playerId ?? "");
+    const pid = raw ? Number.parseInt(raw, 10) : NaN;
+    const teamStr = String(row.team ?? "HOME");
+    return {
+      id: Number.isFinite(pid) ? pid : undefined,
+      name: row.playerName as string,
+      team: teamStr === "AWAY" ? "AWAY" : "HOME",
+      pitchingOuts: inningsFloatFromDbToOuts(Number(row.innings) || 0),
+      hitsAllowed: Number(row.hits) || 0,
+      runsAllowed: Number(row.runs) || 0,
+      walks: Number(row.walks) || 0,
+      strikeouts: Number(row.strikeouts) || 0,
+      homeRunsAllowed: Number(row.homeRuns) || 0,
+    };
+  });
+
   const inningRow = (innings[0] ?? {}) as Record<string, unknown>;
   const inningList: { inningNumber: number; topBottom: string; runs: number }[] = [];
   for (let i = 1; i <= 12; i++) {
@@ -133,6 +183,7 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
     date: m.date,
     createdAt: m.createdAt,
     players: playerList,
+    pitchers: pitcherList,
     innings: inningList,
   };
 }
@@ -211,6 +262,7 @@ app.post("/api/scoreboard/game", async (req, res) => {
       homeScore: 0,
       awayScore: 0,
       players: body.players ?? [],
+      pitchers: [],
       innings: [],
     });
   } catch (e) {
@@ -238,6 +290,7 @@ app.put("/api/scoreboard/game/:id", async (req, res) => {
     homeScore?: number;
     awayScore?: number;
     players?: Player[];
+    pitchers?: PitcherPayload[];
     innings?: InningData[];
   };
 
@@ -284,6 +337,29 @@ app.put("/api/scoreboard/game/:id", async (req, res) => {
             [id, String(p.id ?? ""), p.name, p.position ?? "", p.lineupOrder ?? 0, i + 1, result],
           );
         }
+      }
+    }
+
+    if (body.pitchers !== undefined) {
+      await client.query(`DELETE FROM "PitchRecord" WHERE "matchId" = $1`, [id]);
+      for (const p of body.pitchers) {
+        await client.query(
+          `INSERT INTO "PitchRecord" ("matchId", "playerId", "playerName", team, innings, hits, runs, "earnedRuns", walks, strikeouts, "homeRuns")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            id,
+            String(p.id ?? ""),
+            p.name,
+            p.team === "AWAY" ? "AWAY" : "HOME",
+            Math.max(0, Math.round(Number(p.pitchingOuts ?? 0))),
+            p.hitsAllowed ?? 0,
+            p.runsAllowed ?? 0,
+            0,
+            p.walks ?? 0,
+            p.strikeouts ?? 0,
+            p.homeRunsAllowed ?? 0,
+          ],
+        );
       }
     }
 

@@ -113,6 +113,7 @@ model PitchRecord {
   match      Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   playerId   String @default("")
   playerName String
+  team       String @default("HOME")
   innings    Float  @default(0)
   hits       Int    @default(0)
   runs       Int    @default(0)

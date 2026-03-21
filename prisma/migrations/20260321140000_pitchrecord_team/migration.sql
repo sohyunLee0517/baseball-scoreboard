@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "PitchRecord" ADD COLUMN "team" TEXT NOT NULL DEFAULT 'HOME';

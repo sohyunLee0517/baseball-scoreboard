@@ -1,4 +1,4 @@
-import type { Player } from "./types";
+import type { PitcherRecord, Player } from "./types";
 import type { SchoolPlayerListItem } from "./types/school";
 import { parseSchoolPlayerId } from "./school-api";
 
@@ -61,4 +61,28 @@ export function normalizeRosterSchoolPlayerIds(
 
     return p;
   });
+}
+
+/** 투수 명단도 학교 선수 id·이름·등번호를 `normalizeRosterSchoolPlayerIds`와 동일 규칙으로 맞춤 */
+export function normalizePitcherRecordsSchoolPlayerIds(
+  records: PitcherRecord[],
+  schoolPlayers: SchoolPlayerListItem[],
+): PitcherRecord[] {
+  const asPlayers: Player[] = records.map((r, i) => ({
+    id: r.id,
+    name: r.name,
+    team: r.team,
+    position: r.position,
+    backNumber: r.backNumber,
+    lineupOrder: i + 1,
+  }));
+  const normalized = normalizeRosterSchoolPlayerIds(asPlayers, schoolPlayers);
+  return normalized.map((p, i) => ({
+    ...records[i],
+    id: p.id,
+    name: p.name,
+    team: p.team,
+    position: p.position,
+    backNumber: p.backNumber,
+  }));
 }
