@@ -4,7 +4,6 @@ import { getGames, deleteGame } from "../api";
 import { Game } from "../types";
 import { useOwnerId } from "../ownerId-store";
 import { useMyTeam } from "../my-team-store";
-import { parseSchoolPlayerId } from "../school-api";
 
 export const GameList: React.FC = () => {
   const navigate = useNavigate();
@@ -74,28 +73,14 @@ export const GameList: React.FC = () => {
               같은 학교 선수
             </p>
             <ul className="flex flex-wrap gap-2 text-xs text-slate-700">
-              {myTeam.players.map((p, idx) => {
-                const schoolId = parseSchoolPlayerId(p);
-                return (
-                  <li key={p.id ?? `p-${idx}`}>
-                    <button
-                      type="button"
-                      disabled={schoolId == null}
-                      onClick={() => {
-                        if (schoolId != null)
-                          navigate(`/players/${schoolId}`);
-                      }}
-                      className={`rounded-full px-3 py-1 font-medium transition ${
-                        schoolId != null
-                          ? "bg-slate-100 text-slate-800 cursor-pointer hover:bg-slate-200 hover:text-slate-900"
-                          : "bg-slate-50 text-slate-400 cursor-not-allowed"
-                      }`}
-                    >
-                      {p.name ?? `#${p.id ?? "?"}`}
-                    </button>
-                  </li>
-                );
-              })}
+              {myTeam.players.map((p, idx) => (
+                <li
+                  key={p.id ?? `p-${idx}`}
+                  className="rounded-full bg-slate-100 px-3 py-1"
+                >
+                  {p.name ?? `#${p.id ?? "?"}`}
+                </li>
+              ))}
             </ul>
           </div>
         )}
