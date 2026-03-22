@@ -760,14 +760,14 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
         </div>
 
         {/* 투수 기록 — 라인업 없음; 학교 명단에서 추가 */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 min-w-0">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-gray-700">투수 기록</h3>
             <div className="text-xs text-gray-400">총 {pitchers.length}명</div>
           </div>
 
-          <div className="overflow-x-auto -mx-1 px-1 mb-4">
-            <table className="w-full text-sm border-collapse">
+          <div className="overflow-x-auto -mx-1 px-1 mb-4 min-w-0">
+            <table className="min-w-full w-max text-sm border-collapse">
               <thead>
                 <tr className="text-left text-[11px] text-gray-500 border-b border-gray-100">
                   <th className="pb-2 pr-2 font-semibold text-gray-700">
