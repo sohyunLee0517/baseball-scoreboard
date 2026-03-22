@@ -68,3 +68,17 @@ export interface MemberSchoolResponse {
 export interface MemberPlayerResponse {
   schoolName?: string | null;
 }
+
+/**
+ * GET /api/player/:pid — 부모 앱 전역 선수 프로필 (학교 한정 아님)
+ */
+export interface PlayerApiProfile {
+  id?: number | string;
+  name?: string;
+  /** 본명 등 — 화면 상세 목록에서 제외 */
+  realName?: string;
+  backNumber?: string;
+  position?: string;
+  /** 알 수 있는 추가 필드(부모 API 스키마 확장) */
+  [key: string]: unknown;
+}

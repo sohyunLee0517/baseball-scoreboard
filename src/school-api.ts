@@ -3,6 +3,7 @@ import axios from "axios";
 import type {
   MemberPlayerResponse,
   MemberSchoolResponse,
+  PlayerApiProfile,
   PlayerSchoolNameResponse,
   School,
   SchoolByNameResponse,
@@ -14,6 +15,7 @@ import type {
 export type {
   MemberPlayerResponse,
   MemberSchoolResponse,
+  PlayerApiProfile,
   PlayerSchoolNameResponse,
   School,
   SchoolByNameResponse,
@@ -62,6 +64,24 @@ export async function fetchSchoolInfoByLoginId(
 const playerSchoolNameApi = axios.create({
   baseURL: "/api/player/school-name",
 });
+
+const playerProfileApi = axios.create({
+  baseURL: "/api/player",
+});
+
+/** GET /api/player/:pid — 전역 선수 정보 (404 등은 null) */
+export async function getPlayerById(
+  pid: string | number,
+): Promise<PlayerApiProfile | null> {
+  const id = encodeURIComponent(String(pid).trim());
+  if (!id) return null;
+  try {
+    const response = await playerProfileApi.get<PlayerApiProfile>(`/${id}`);
+    return response.data ?? null;
+  } catch {
+    return null;
+  }
+}
 
 // GET /api/player/school-name?playerId=...
 export const getSchoolNameByPlayerId = async (

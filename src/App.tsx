@@ -27,7 +27,7 @@ function App() {
       {/* Dynamic Header */}
       <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-200">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -47,7 +47,18 @@ function App() {
             <span className="font-black tracking-tighter text-xl text-slate-900">
               BASEBALL<span className="text-blue-600">HUB</span>
             </span>
-          </div>
+          </div> */}
+
+          <a
+            href="/"
+            className={`justify-self-start flex items-center gap-2 hover:text-blue-300 transition shrink-0`}
+          >
+            <div className="flex flex-col leading-tight">
+              <span className="font-bold text-base sm:text-lg tracking-wide">
+                INPLAYPEDIA
+              </span>
+            </div>
+          </a>
 
           <div className="flex items-center gap-4">
             {ownerId ? (
@@ -56,12 +67,12 @@ function App() {
                 연결: {ownerId}
               </div>
             ) : null}
-            <a
+            {/* <a
               href="/"
               className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors"
             >
               홈으로 나가기
-            </a>
+            </a> */}
           </div>
         </div>
       </header>
