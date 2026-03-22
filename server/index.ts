@@ -384,9 +384,10 @@ app.put("/api/scoreboard/game/:id", async (req, res) => {
       `UPDATE "Match"
        SET status = 'FINISHED',
            "homeScore" = $1,
-           "awayScore" = $2
+           "awayScore" = $2,
+           title = COALESCE($4, title)
        WHERE id = $3`,
-      [body.homeScore ?? 0, body.awayScore ?? 0, id],
+      [body.homeScore ?? 0, body.awayScore ?? 0, id, body.title ?? null],
     );
 
     if (rowCount === 0) {
