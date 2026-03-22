@@ -398,7 +398,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
       {/* Main Scoreboard UI */}
       <div className="bg-slate-900 text-white rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800">
-        <div className="grid grid-cols-[1fr_repeat(9,auto)_repeat(4,auto)] text-center items-center">
+        <div className="grid grid-cols-[minmax(max-content,1fr)_repeat(9,auto)_repeat(4,auto)] text-center items-center overflow-x-auto overflow-y-auto">
           {/* Header Row */}
           <div className="p-4 text-left font-bold text-slate-500 text-xs tracking-widest">
             팀
@@ -406,39 +406,39 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           {[...Array(TOTAL_INNINGS)].map((_, i) => (
             <div
               key={i}
-              className="text-xs font-bold text-slate-500 border-l border-slate-800"
+              className="text-xs font-bold text-slate-500 border-l border-slate-800 w-full min-w-4"
             >
               {i + 1}
             </div>
           ))}
           <div
-            className="font-black text-amber-400 border-l-2 border-slate-700 text-xs"
+            className="font-black text-amber-400 border-l-2 border-slate-700 text-xs w-full min-w-4"
             title="득점"
           >
-            득
+            R
           </div>
           <div
-            className="font-bold text-slate-400 border-l border-slate-800 text-xs"
+            className="font-bold text-slate-400 border-l border-slate-800 text-xs w-full min-w-4"
             title="안타"
           >
-            안
+            H
           </div>
           <div
-            className="font-bold text-slate-400 border-l border-slate-800 text-xs"
+            className="font-bold text-slate-400 border-l border-slate-800 text-xs w-full min-w-4"
             title="실책"
           >
-            실
+            E
           </div>
           <div
-            className="font-bold text-slate-400 border-l border-slate-800 text-xs"
+            className="font-bold text-slate-400 border-l border-slate-800 text-xs w-full min-w-4"
             title="볼(팀 합)"
           >
-            볼
+            B
           </div>
 
           {/* Away Team Row */}
-          <div className="p-4 text-left border-t border-slate-800">
-            <span className="text-lg font-black tracking-tighter">
+          <div className="text-lg px-[1em] py-[0.75em] text-left border-t border-slate-800 min-h-12 flex items-center self-stretch shrink-0">
+            <span className="font-black tracking-tighter leading-none whitespace-nowrap">
               {game.awayTeam}
             </span>
           </div>
@@ -463,19 +463,19 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               />
             </div>
           ))}
-          <div className=" border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center min-h-[3.5rem]">
+          <div className=" border-l-2 border-slate-700 bg-slate-800/50 flex items-center justify-center">
             <span
-              className="w-full max-w-[4.5rem] inline-block text-center font-mono text-3xl font-black text-amber-400 tabular-nums"
+              className="flex h-12 w-12 items-center justify-center font-mono text-3xl font-black tabular-nums text-amber-400"
               aria-label={`원정 득점 합계 ${awayRunsFromInnings}`}
             >
               {awayRunsFromInnings}
             </span>
           </div>
-          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l border-slate-800 bg-slate-800/20 flex items-center justify-center">
             <input
               type="number"
               min={0}
-              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              className="w-12 h-12 bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
               value={awayLine.hits}
               onChange={(e) =>
                 setAwayLine((prev) => ({
@@ -485,11 +485,11 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               }
             />
           </div>
-          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l border-slate-800 bg-slate-800/20 flex items-center justify-center">
             <input
               type="number"
               min={0}
-              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              className="w-12 h-12 bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
               value={awayLine.errors}
               onChange={(e) =>
                 setAwayLine((prev) => ({
@@ -499,11 +499,11 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               }
             />
           </div>
-          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l border-slate-800 bg-slate-800/20 flex items-center justify-center">
             <input
               type="number"
               min={0}
-              className="w-full max-w-[3.5rem] bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
+              className="w-12 h-12 bg-transparent text-center font-mono text-xl font-bold text-slate-300 focus:bg-blue-900/40 outline-none rounded px-1"
               value={awayLine.balls}
               onChange={(e) =>
                 setAwayLine((prev) => ({
@@ -515,8 +515,8 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           </div>
 
           {/* Home Team Row */}
-          <div className="p-4 text-left border-t border-slate-800">
-            <span className="text-lg font-black tracking-tighter">
+          <div className="text-lg px-[1em] py-[0.75em] text-left border-t border-slate-800 min-h-12 flex items-center self-stretch shrink-0">
+            <span className="font-black tracking-tighter leading-none whitespace-nowrap">
               {game.homeTeam}
             </span>
           </div>
@@ -541,15 +541,15 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               />
             </div>
           ))}
-          <div className="border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l-2 border-t border-slate-700 bg-slate-800/50 flex items-center justify-center">
             <span
-              className="w-full max-w-[4.5rem] inline-block text-center font-mono text-3xl font-black text-amber-400 tabular-nums"
+              className="flex h-12 w-12 items-center justify-center font-mono text-3xl font-black tabular-nums text-amber-400"
               aria-label={`홈 득점 합계 ${homeRunsFromInnings}`}
             >
               {homeRunsFromInnings}
             </span>
           </div>
-          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l border-slate-800 bg-slate-800/20 flex items-center justify-center">
             <input
               type="number"
               min={0}
@@ -563,7 +563,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               }
             />
           </div>
-          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l border-slate-800 bg-slate-800/20 flex items-center justify-center">
             <input
               type="number"
               min={0}
@@ -577,7 +577,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               }
             />
           </div>
-          <div className="border-l border-t border-slate-800 bg-slate-800/20 flex items-center justify-center min-h-[3.5rem]">
+          <div className="border-l border-slate-800 bg-slate-800/20 flex items-center justify-center">
             <input
               type="number"
               min={0}
@@ -602,7 +602,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
             <div className="text-xs text-gray-400">총 {players.length}명</div>
           </div>
 
-          <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-2">
+          <div className="space-y-2 mb-4 pr-2">
             {players.map((p, idx) => {
               const recordsSummary = summarizeInningRecords(p.inningRecords);
               return (
@@ -767,24 +767,24 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           </div>
 
           <div className="overflow-x-auto -mx-1 px-1 mb-4">
-            <table className="w-full text-sm border-collapse min-w-[32rem]">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="text-left text-[11px] text-gray-500 border-b border-gray-100">
                   <th className="pb-2 pr-2 font-semibold text-gray-700">
                     투수
                   </th>
                   <th
-                    className="pb-2 px-0.5 font-semibold w-[7.5rem]"
+                    className="pb-2 px-0.5 font-semibold"
                     title="3아웃 = 1이닝. +/−로 타자 아웃을 누적 (0 → 0.1 → 0.2 → 1 …)"
                   >
                     이닝
                   </th>
-                  <th className="pb-2 px-0.5 font-semibold w-11">안타</th>
-                  <th className="pb-2 px-0.5 font-semibold w-11">실점</th>
-                  <th className="pb-2 px-0.5 font-semibold w-11">4구</th>
-                  <th className="pb-2 px-0.5 font-semibold w-11">삼진</th>
-                  <th className="pb-2 px-0.5 font-semibold w-11">홈런</th>
-                  <th className="pb-2 w-8" aria-hidden />
+                  <th className="pb-2 px-0.5 font-semibold">안타</th>
+                  <th className="pb-2 px-0.5 font-semibold">실점</th>
+                  <th className="pb-2 px-0.5 font-semibold">4구</th>
+                  <th className="pb-2 px-0.5 font-semibold">삼진</th>
+                  <th className="pb-2 px-0.5 font-semibold">홈런</th>
+                  <th className="pb-2" aria-hidden />
                 </tr>
               </thead>
               <tbody>
