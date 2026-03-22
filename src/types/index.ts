@@ -17,6 +17,8 @@ export type {
 } from "./game";
 
 export type {
+  MemberPlayerResponse,
+  MemberSchoolResponse,
   PlayerSchoolNameResponse,
   School,
   SchoolByNameResponse,

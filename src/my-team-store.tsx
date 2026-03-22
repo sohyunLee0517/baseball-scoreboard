@@ -1,9 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import {
-  fetchSchoolInfoBySchoolName,
-  getSchoolNameByPlayerId,
-  parseSchoolPlayerId,
-} from "./school-api";
+import { fetchSchoolInfoByLoginId, parseSchoolPlayerId } from "./school-api";
 import type {
   SchoolInfoData,
   SchoolPlayerListItem,
@@ -14,7 +10,7 @@ import { useOwnerId } from "./ownerId-store";
 /**
  * 전역 스토어: 학교 정보 + 학교 소속 선수 리스트를 한곳에 둡니다 (별도 훅으로 또 부르지 않음).
  * - `school`, `schoolName`: 학교 메타
- * - `players`: `getSchoolPlayersByName` 응답을 그대로 둡니다. `id`/`playerId`는 API 값을 바꾸지 않습니다.
+ * - `players`: member/school API 응답을 그대로 둡니다. `id`/`playerId`는 API 값을 바꾸지 않습니다.
  */
 
 /**
@@ -68,28 +64,8 @@ export const MyTeamProvider: React.FC<{ children: React.ReactNode }> = ({
 
     void (async () => {
       try {
-        const playerId = Number(ownerId);
-        if (Number.isNaN(playerId)) {
-          if (!cancelled) {
-            setState({
-              ...emptyState,
-              loading: false,
-              error: "Invalid ownerId",
-            });
-          }
-          return;
-        }
-
-        const { schoolName } = await getSchoolNameByPlayerId(playerId);
-        if (!schoolName) {
-          if (!cancelled) {
-            setState({ ...emptyState, loading: false });
-          }
-          return;
-        }
-
-        const { school, players } =
-          await fetchSchoolInfoBySchoolName(schoolName);
+        const { schoolName, school, players } =
+          await fetchSchoolInfoByLoginId(ownerId);
         if (cancelled) return;
         setState({
           schoolName,

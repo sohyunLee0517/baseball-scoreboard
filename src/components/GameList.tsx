@@ -61,7 +61,10 @@ export const GameList: React.FC = () => {
               {myTeam.school.name}
               <span className="text-gray-400 font-bold">
                 {" "}
-                • {myTeam.school.category_label} • {myTeam.school.region}
+                {myTeam.school.category_label
+                  ? "• " + myTeam.school.category_label
+                  : ""}{" "}
+                • {myTeam.school.region}
               </span>
             </a>
           ) : (
@@ -71,9 +74,6 @@ export const GameList: React.FC = () => {
         {!myTeam.loading && myTeam.players.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="mb-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                같은 학교 선수
-              </p>
               <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
                 아래 선수를 누르면, 해당 선수로 등록된 경기의{" "}
                 <span className="text-slate-600 font-semibold">
@@ -91,8 +91,7 @@ export const GameList: React.FC = () => {
                       type="button"
                       disabled={schoolId == null}
                       onClick={() => {
-                        if (schoolId != null)
-                          navigate(`/players/${schoolId}`);
+                        if (schoolId != null) navigate(`/players/${schoolId}`);
                       }}
                       className={`rounded-full px-3 py-1 font-medium transition ${
                         schoolId != null

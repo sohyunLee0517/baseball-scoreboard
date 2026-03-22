@@ -51,3 +51,20 @@ export type SchoolInfoData = {
   /** `GET /api/school/by-name/players?name=` */
   players: SchoolPlayerListItem[];
 };
+
+/**
+ * GET /api/member/school?loginId= — 학교 + 해당 학교 현재 소속 선수
+ * (필드명은 백엔드와 맞추고, 없으면 아래 매핑에서 보완)
+ */
+export interface MemberSchoolResponse {
+  schoolName?: string | null;
+  school?: School | null;
+  currentPlayers?: SchoolPlayerListItem[];
+}
+
+/**
+ * GET /api/member/player?loginId= — 로그인(소유자) 선수 정보
+ */
+export interface MemberPlayerResponse {
+  schoolName?: string | null;
+}

@@ -1,6 +1,8 @@
 import axios from "axios";
 
 import type {
+  MemberPlayerResponse,
+  MemberSchoolResponse,
   PlayerSchoolNameResponse,
   School,
   SchoolByNameResponse,
@@ -10,6 +12,8 @@ import type {
 } from "./types/school";
 
 export type {
+  MemberPlayerResponse,
+  MemberSchoolResponse,
   PlayerSchoolNameResponse,
   School,
   SchoolByNameResponse,
@@ -17,6 +21,43 @@ export type {
   SchoolPlayerListItem,
   SchoolPlayersByNameResponse,
 } from "./types/school";
+
+const memberApi = axios.create({
+  baseURL: "/api/member",
+});
+
+/** GET /api/member/player?loginId= */
+export const getMemberPlayer = async (
+  loginId: string,
+): Promise<MemberPlayerResponse> => {
+  const response = await memberApi.get<MemberPlayerResponse>("/player", {
+    params: { loginId },
+  });
+  return response.data;
+};
+
+/** GET /api/member/school?loginId= */
+export const getMemberSchool = async (
+  loginId: string,
+): Promise<MemberSchoolResponse> => {
+  const response = await memberApi.get<MemberSchoolResponse>("/school", {
+    params: { loginId },
+  });
+  return response.data;
+};
+
+/** loginId로 학교·선수 목록을 `SchoolInfoData` 형태로 조회 (신규 member API) */
+export async function fetchSchoolInfoByLoginId(
+  loginId: string,
+): Promise<SchoolInfoData> {
+  const data = await getMemberSchool(loginId);
+  const schoolName = data.schoolName ?? data.school?.name?.trim() ?? null;
+  return {
+    schoolName,
+    school: data.school ?? null,
+    players: data.currentPlayers ?? [],
+  };
+}
 
 const playerSchoolNameApi = axios.create({
   baseURL: "/api/player/school-name",
