@@ -80,6 +80,9 @@ interface Props {
 
 const TOTAL_INNINGS = 9;
 
+/** select에서 이 값을 고르면 목록에 없는 선수 이름을 직접 입력 */
+const MANUAL_PLAYER_OPTION = "__manual_other__";
+
 export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   const [game, setGame] = useState<Game>(initialGame);
   const [innings, setInnings] = useState<Inning[]>(initialGame.innings || []);
@@ -187,6 +190,10 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   const [selectedSchoolPlayerId, setSelectedSchoolPlayerId] = useState("");
   const [selectedPitcherSchoolPlayerId, setSelectedPitcherSchoolPlayerId] =
     useState("");
+  const [manualBatterName, setManualBatterName] = useState("");
+  const [manualBatterBackNumber, setManualBatterBackNumber] = useState("");
+  const [manualPitcherName, setManualPitcherName] = useState("");
+  const [manualPitcherBackNumber, setManualPitcherBackNumber] = useState("");
   const [modalPlayerIndex, setModalPlayerIndex] = useState<number | null>(null);
   const [draftInningRecords, setDraftInningRecords] = useState<string[]>(() =>
     Array(9).fill(""),
@@ -343,7 +350,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
   };
 
   return (
-    <div className="p-4 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 pt-0 max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100">
         <button
           onClick={onBack}
@@ -698,21 +705,32 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               <span className="font-semibold text-gray-700">
                 {myTeamSide === "HOME" ? game.homeTeam : game.awayTeam}
               </span>{" "}
-              ({myTeamSide === "HOME" ? "홈" : "원정"}) · 학교 등록 선수만
+              ({myTeamSide === "HOME" ? "홈" : "원정"}) · 선택에서{" "}
+              <span className="font-medium text-gray-700">기타 (직접 입력)</span>
+              을 고르면 이름을 입력할 수 있습니다.
             </p>
             {myTeam.loading ? (
               <p className="text-xs text-gray-400">
                 학교 선수 목록을 불러오는 중…
               </p>
-            ) : schoolPlayersForPick.length === 0 ? (
-              <p className="text-xs text-amber-600">
-                학교에 등록된 선수가 없거나, 선수 ID를 확인할 수 없습니다.
-              </p>
             ) : (
               <>
+                {schoolPlayersForPick.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    학교에 등록된 선수가 없거나 ID를 확인할 수 없습니다. 아래
+                    선택에서 「기타 (직접 입력)」을 고르세요.
+                  </p>
+                )}
                 <select
                   value={selectedSchoolPlayerId}
-                  onChange={(e) => setSelectedSchoolPlayerId(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedSchoolPlayerId(v);
+                    if (v !== MANUAL_PLAYER_OPTION) {
+                      setManualBatterName("");
+                      setManualBatterBackNumber("");
+                    }
+                  }}
                   className="w-full text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
                 >
                   <option value="">선수 선택</option>
@@ -722,45 +740,109 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                       {sp.backNumber ? ` · #${sp.backNumber}` : ""}
                     </option>
                   ))}
+                  <option value={MANUAL_PLAYER_OPTION}>기타 (직접 입력)</option>
                 </select>
-                {availableSchoolPlayers.length === 0 && (
-                  <p className="text-xs text-gray-400">
-                    추가할 학교 선수가 없습니다. (이미 명단에 모두 포함됨)
-                  </p>
+                {availableSchoolPlayers.length === 0 &&
+                  schoolPlayersForPick.length > 0 && (
+                    <p className="text-xs text-gray-400">
+                      추가할 학교 선수가 없습니다. (이미 명단에 모두 포함됨)
+                    </p>
+                  )}
+                {schoolPlayersForPick.length > 0 &&
+                  selectedSchoolPlayerId !== "" &&
+                  selectedSchoolPlayerId !== MANUAL_PLAYER_OPTION && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const team = myTeamSide;
+                        const pid = Number.parseInt(selectedSchoolPlayerId, 10);
+                        if (!Number.isFinite(pid)) return;
+                        const sp = schoolPlayersForPick.find(
+                          (s) => s.id === pid,
+                        );
+                        if (!sp) return;
+                        if (players.some((p) => p.id === pid)) {
+                          alert("이미 명단에 있는 선수입니다.");
+                          return;
+                        }
+                        setPlayers([
+                          ...players,
+                          {
+                            id: sp.id,
+                            name: sp.name,
+                            backNumber: sp.backNumber,
+                            team,
+                            position: sp.position,
+                            lineupOrder: players.length + 1,
+                          },
+                        ]);
+                        setSelectedSchoolPlayerId("");
+                      }}
+                      className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition"
+                    >
+                      명단에서 선수 추가
+                    </button>
+                  )}
+                {selectedSchoolPlayerId === MANUAL_PLAYER_OPTION && (
+                  <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 p-3 space-y-2">
+                    <p className="text-[11px] font-semibold text-gray-600">
+                      목록에 없는 선수 (이름 입력)
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={manualBatterName}
+                        onChange={(e) => setManualBatterName(e.target.value)}
+                        placeholder="이름"
+                        className="flex-1 min-w-0 text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={manualBatterBackNumber}
+                        onChange={(e) =>
+                          setManualBatterBackNumber(e.target.value)
+                        }
+                        placeholder="등번호 (선택)"
+                        className="w-full sm:w-28 text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = manualBatterName.trim();
+                        if (!name) return;
+                        const back = manualBatterBackNumber.trim();
+                        const dup = players.some(
+                          (p) =>
+                            p.name.trim() === name &&
+                            (p.backNumber?.trim() ?? "") === back,
+                        );
+                        if (dup) {
+                          alert("이미 명단에 있는 선수입니다.");
+                          return;
+                        }
+                        const team = myTeamSide;
+                        setPlayers([
+                          ...players,
+                          {
+                            name,
+                            backNumber: back || undefined,
+                            team,
+                            lineupOrder: players.length + 1,
+                          },
+                        ]);
+                        setManualBatterName("");
+                        setManualBatterBackNumber("");
+                        setSelectedSchoolPlayerId("");
+                      }}
+                      disabled={!manualBatterName.trim()}
+                      className="w-full bg-slate-700 text-white text-sm font-bold py-2 rounded-lg hover:bg-slate-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      이름으로 선수 추가
+                    </button>
+                  </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const team = myTeamSide;
-                    const pid = Number.parseInt(selectedSchoolPlayerId, 10);
-                    if (!Number.isFinite(pid)) return;
-                    const sp = schoolPlayersForPick.find((s) => s.id === pid);
-                    if (!sp) return;
-                    if (players.some((p) => p.id === pid)) {
-                      alert("이미 명단에 있는 선수입니다.");
-                      return;
-                    }
-                    setPlayers([
-                      ...players,
-                      {
-                        id: sp.id,
-                        name: sp.name,
-                        backNumber: sp.backNumber,
-                        team,
-                        position: sp.position,
-                        lineupOrder: players.length + 1,
-                      },
-                    ]);
-                    setSelectedSchoolPlayerId("");
-                  }}
-                  disabled={
-                    selectedSchoolPlayerId === "" ||
-                    availableSchoolPlayers.length === 0
-                  }
-                  className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  선수 추가
-                </button>
               </>
             )}
           </div>
@@ -921,23 +1003,32 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               <span className="font-semibold text-gray-700">
                 {myTeamSide === "HOME" ? game.homeTeam : game.awayTeam}
               </span>{" "}
-              ({myTeamSide === "HOME" ? "홈" : "원정"}) · 학교 등록 선수만
+              ({myTeamSide === "HOME" ? "홈" : "원정"}) · 선택에서{" "}
+              <span className="font-medium text-gray-700">기타 (직접 입력)</span>
+              을 고르면 이름을 입력할 수 있습니다.
             </p>
             {myTeam.loading ? (
               <p className="text-xs text-gray-400">
                 학교 선수 목록을 불러오는 중…
               </p>
-            ) : schoolPlayersForPick.length === 0 ? (
-              <p className="text-xs text-amber-600">
-                학교에 등록된 선수가 없거나, 선수 ID를 확인할 수 없습니다.
-              </p>
             ) : (
               <>
+                {schoolPlayersForPick.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    학교에 등록된 선수가 없거나 ID를 확인할 수 없습니다. 아래
+                    선택에서 「기타 (직접 입력)」을 고르세요.
+                  </p>
+                )}
                 <select
                   value={selectedPitcherSchoolPlayerId}
-                  onChange={(e) =>
-                    setSelectedPitcherSchoolPlayerId(e.target.value)
-                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedPitcherSchoolPlayerId(v);
+                    if (v !== MANUAL_PLAYER_OPTION) {
+                      setManualPitcherName("");
+                      setManualPitcherBackNumber("");
+                    }
+                  }}
                   className="w-full text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
                 >
                   <option value="">선수 선택</option>
@@ -947,53 +1038,122 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                       {sp.backNumber ? ` · #${sp.backNumber}` : ""}
                     </option>
                   ))}
+                  <option value={MANUAL_PLAYER_OPTION}>기타 (직접 입력)</option>
                 </select>
-                {availableSchoolPlayersForPitchers.length === 0 && (
-                  <p className="text-xs text-gray-400">
-                    추가할 학교 선수가 없습니다. (이미 투수 명단에 포함됨)
-                  </p>
+                {availableSchoolPlayersForPitchers.length === 0 &&
+                  schoolPlayersForPick.length > 0 && (
+                    <p className="text-xs text-gray-400">
+                      추가할 학교 선수가 없습니다. (이미 투수 명단에 포함됨)
+                    </p>
+                  )}
+                {schoolPlayersForPick.length > 0 &&
+                  selectedPitcherSchoolPlayerId !== "" &&
+                  selectedPitcherSchoolPlayerId !== MANUAL_PLAYER_OPTION && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const team = myTeamSide;
+                        const pid = Number.parseInt(
+                          selectedPitcherSchoolPlayerId,
+                          10,
+                        );
+                        if (!Number.isFinite(pid)) return;
+                        const sp = schoolPlayersForPick.find(
+                          (s) => s.id === pid,
+                        );
+                        if (!sp) return;
+                        if (pitchers.some((p) => p.id === pid)) {
+                          alert("이미 투수 명단에 있습니다.");
+                          return;
+                        }
+                        setPitchers([
+                          ...pitchers,
+                          {
+                            id: sp.id,
+                            name: sp.name,
+                            backNumber: sp.backNumber,
+                            team,
+                            position: sp.position,
+                            pitchingOuts: 0,
+                            hitsAllowed: 0,
+                            runsAllowed: 0,
+                            walks: 0,
+                            strikeouts: 0,
+                            homeRunsAllowed: 0,
+                          },
+                        ]);
+                        setSelectedPitcherSchoolPlayerId("");
+                      }}
+                      className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition"
+                    >
+                      명단에서 선수 추가
+                    </button>
+                  )}
+                {selectedPitcherSchoolPlayerId === MANUAL_PLAYER_OPTION && (
+                  <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 p-3 space-y-2">
+                    <p className="text-[11px] font-semibold text-gray-600">
+                      목록에 없는 선수 (이름 입력)
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={manualPitcherName}
+                        onChange={(e) => setManualPitcherName(e.target.value)}
+                        placeholder="이름"
+                        className="flex-1 min-w-0 text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={manualPitcherBackNumber}
+                        onChange={(e) =>
+                          setManualPitcherBackNumber(e.target.value)
+                        }
+                        placeholder="등번호 (선택)"
+                        className="w-full sm:w-28 text-sm border rounded-lg px-3 py-2 bg-white outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = manualPitcherName.trim();
+                        if (!name) return;
+                        const back = manualPitcherBackNumber.trim();
+                        const dup = pitchers.some(
+                          (p) =>
+                            p.name.trim() === name &&
+                            (p.backNumber?.trim() ?? "") === back,
+                        );
+                        if (dup) {
+                          alert("이미 투수 명단에 있습니다.");
+                          return;
+                        }
+                        const team = myTeamSide;
+                        setPitchers([
+                          ...pitchers,
+                          {
+                            name,
+                            backNumber: back || undefined,
+                            team,
+                            pitchingOuts: 0,
+                            hitsAllowed: 0,
+                            runsAllowed: 0,
+                            walks: 0,
+                            strikeouts: 0,
+                            homeRunsAllowed: 0,
+                          },
+                        ]);
+                        setManualPitcherName("");
+                        setManualPitcherBackNumber("");
+                        setSelectedPitcherSchoolPlayerId("");
+                      }}
+                      disabled={!manualPitcherName.trim()}
+                      className="w-full bg-slate-700 text-white text-sm font-bold py-2 rounded-lg hover:bg-slate-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      이름으로 투수 추가
+                    </button>
+                  </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const team = myTeamSide;
-                    const pid = Number.parseInt(
-                      selectedPitcherSchoolPlayerId,
-                      10,
-                    );
-                    if (!Number.isFinite(pid)) return;
-                    const sp = schoolPlayersForPick.find((s) => s.id === pid);
-                    if (!sp) return;
-                    if (pitchers.some((p) => p.id === pid)) {
-                      alert("이미 투수 명단에 있습니다.");
-                      return;
-                    }
-                    setPitchers([
-                      ...pitchers,
-                      {
-                        id: sp.id,
-                        name: sp.name,
-                        backNumber: sp.backNumber,
-                        team,
-                        position: sp.position,
-                        pitchingOuts: 0,
-                        hitsAllowed: 0,
-                        runsAllowed: 0,
-                        walks: 0,
-                        strikeouts: 0,
-                        homeRunsAllowed: 0,
-                      },
-                    ]);
-                    setSelectedPitcherSchoolPlayerId("");
-                  }}
-                  disabled={
-                    selectedPitcherSchoolPlayerId === "" ||
-                    availableSchoolPlayersForPitchers.length === 0
-                  }
-                  className="w-full bg-gray-800 text-white text-sm font-bold py-2 rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  선수 추가
-                </button>
               </>
             )}
           </div>
