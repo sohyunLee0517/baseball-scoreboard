@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { GameList } from "./components/GameList";
+import { RedirectionUrlHandler } from "./components/RedirectionUrlHandler";
 import { useOwnerId } from "./ownerId-store";
 
 const NewGameForm = lazy(() =>
@@ -22,6 +23,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+      <RedirectionUrlHandler />
       {/* Dynamic Header */}
       <header className="sticky top-0 z-30 w-full bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
