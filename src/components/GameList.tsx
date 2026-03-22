@@ -122,7 +122,7 @@ export const GameList: React.FC = () => {
           </div>
         )}
       </div>
-      <div className="flex flex-row flex-nowrap justify-between items-center mb-8 gap-3 sm:gap-4">
+      <div className="flex flex-row flex-nowrap justify-between items-center mb-1 gap-3 sm:gap-4">
         <div className="min-w-0 shrink">
           <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
             경기 기록
@@ -146,7 +146,7 @@ export const GameList: React.FC = () => {
           </svg>
         </button>
       </div>
-      <div className="grid gap-6">
+      <div className="grid gap-3">
         {games.map((game) => {
           return (
             <div
