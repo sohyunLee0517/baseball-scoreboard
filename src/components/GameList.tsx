@@ -152,6 +152,7 @@ export const GameList: React.FC = () => {
                         clipRule="evenodd"
                       />
                     </svg>
+
                   </button>
                 </div>
 
