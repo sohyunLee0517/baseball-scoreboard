@@ -362,11 +362,18 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
             />
           </svg>
         </button>
-        <div className="text-center">
-          <h2 className="text-2xl font-black text-gray-800 tracking-tight">
-            {game.title}
-          </h2>
-          <p className="text-xs text-gray-400 font-medium tracking-widest">
+        <div className="flex-1 min-w-0 flex flex-col items-center justify-center text-center px-2">
+          <input
+            type="text"
+            value={game.title}
+            onChange={(e) =>
+              setGame((prev) => ({ ...prev, title: e.target.value }))
+            }
+            aria-label="경기명"
+            autoComplete="off"
+            className="w-full max-w-md text-2xl font-black text-gray-800 tracking-tight text-center bg-transparent border border-transparent rounded-lg px-2 py-0.5 -mx-2 hover:border-gray-200/90 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+          />
+          <p className="text-xs text-gray-400 font-medium tracking-widest mt-1">
             {new Date(game.date!).toLocaleDateString("ko-KR")}
           </p>
         </div>
