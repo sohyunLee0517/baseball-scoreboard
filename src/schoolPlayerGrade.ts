@@ -41,8 +41,11 @@ export function getPlayerEntryGrade(
   if (gField != null && gField >= 4 && gField <= 6) {
     return gField as EntryGradeKey;
   }
-  if (player.year != null) {
-    const fromBirth = elementaryGradeFromBirthYear(Number(player.year), asOf);
+  if (player.birthYear != null) {
+    const fromBirth = elementaryGradeFromBirthYear(
+      Number(player.birthYear),
+      asOf,
+    );
     if (fromBirth != null && fromBirth >= 4 && fromBirth <= 6) {
       return fromBirth as EntryGradeKey;
     }

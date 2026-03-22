@@ -64,7 +64,7 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
       // GET /api/scoreboard/game/:id
       if (method === 'GET' && id !== null) {
         const game = games.find((g) => (g as { id?: number }).id === id)
-        if (!game) return json(res, 404, { message: 'Not found' })
+        if (!game) return json(res, 404, { message: '찾을 수 없습니다.' })
         return json(res, 200, game)
       }
 
@@ -91,7 +91,7 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
         const raw = await readBody(req)
         const body = parseJsonBody(raw)
         const idx = games.findIndex((g) => (g as { id?: number }).id === id)
-        if (idx === -1) return json(res, 404, { message: 'Not found' })
+        if (idx === -1) return json(res, 404, { message: '찾을 수 없습니다.' })
         const updated = { ...games[idx], ...body, id }
         games[idx] = updated
         return json(res, 200, updated)
@@ -100,15 +100,15 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
       // DELETE /api/scoreboard/game/:id
       if (method === 'DELETE' && id !== null) {
         const idx = games.findIndex((g) => (g as { id?: number }).id === id)
-        if (idx === -1) return json(res, 404, { message: 'Not found' })
+        if (idx === -1) return json(res, 404, { message: '찾을 수 없습니다.' })
         games.splice(idx, 1)
         return noContent(res)
       }
 
-      return json(res, 404, { message: 'Not found' })
+      return json(res, 404, { message: '찾을 수 없습니다.' })
     } catch (e) {
       console.error('[mock-api]', e)
-      return json(res, 500, { message: 'Mock API error' })
+      return json(res, 500, { message: '모의 API 오류' })
     }
   }
 }

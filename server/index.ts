@@ -192,7 +192,7 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
 app.get("/api/scoreboard/game", async (req, res) => {
   const ownerId = typeof req.query.ownerId === "string" ? req.query.ownerId : "";
   if (!ownerId) {
-    res.status(400).json({ message: "ownerId required" });
+    res.status(400).json({ message: "ownerId가 필요합니다." });
     return;
   }
   const { rows } = await pool.query(
@@ -209,12 +209,12 @@ app.get("/api/scoreboard/game", async (req, res) => {
 app.get("/api/scoreboard/game/:id", async (req, res) => {
   const id = Number.parseInt(req.params.id ?? "", 10);
   if (!Number.isFinite(id)) {
-    res.status(400).json({ message: "invalid id" });
+    res.status(400).json({ message: "잘못된 id입니다." });
     return;
   }
   const game = await fetchGame(pool, id);
   if (!game) {
-    res.status(404).json({ message: "Not found" });
+    res.status(404).json({ message: "찾을 수 없습니다." });
     return;
   }
   res.json(game);
@@ -277,7 +277,7 @@ app.post("/api/scoreboard/game", async (req, res) => {
 app.put("/api/scoreboard/game/:id", async (req, res) => {
   const id = Number.parseInt(req.params.id ?? "", 10);
   if (!Number.isFinite(id)) {
-    res.status(400).json({ message: "invalid id" });
+    res.status(400).json({ message: "잘못된 id입니다." });
     return;
   }
 
@@ -309,7 +309,7 @@ app.put("/api/scoreboard/game/:id", async (req, res) => {
 
     if (rowCount === 0) {
       await client.query("ROLLBACK");
-      res.status(404).json({ message: "Not found" });
+      res.status(404).json({ message: "찾을 수 없습니다." });
       return;
     }
 
@@ -397,12 +397,12 @@ app.put("/api/scoreboard/game/:id", async (req, res) => {
 app.delete("/api/scoreboard/game/:id", async (req, res) => {
   const id = Number.parseInt(req.params.id ?? "", 10);
   if (!Number.isFinite(id)) {
-    res.status(400).json({ message: "invalid id" });
+    res.status(400).json({ message: "잘못된 id입니다." });
     return;
   }
   const { rowCount } = await pool.query(`DELETE FROM "Match" WHERE id = $1`, [id]);
   if (rowCount === 0) {
-    res.status(404).json({ message: "Not found" });
+    res.status(404).json({ message: "찾을 수 없습니다." });
     return;
   }
   res.status(204).send();

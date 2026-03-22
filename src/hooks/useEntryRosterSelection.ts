@@ -23,6 +23,7 @@ export function useEntryRosterSelection(
 ) {
   const asOf = options?.referenceDate ?? new Date();
 
+  console.log("players", players);
   const groups: GradeGroupRow[] = useMemo(
     () => groupSchoolPlayersByGrade(players, asOf),
     [players, asOf],
@@ -53,12 +54,12 @@ export function useEntryRosterSelection(
     });
   }, []);
 
-  const isSelected = useCallback(
-    (id: number) => selected.has(id),
+  const isSelected = useCallback((id: number) => selected.has(id), [selected]);
+
+  const selectedIds = useMemo(
+    () => [...selected].sort((a, b) => a - b),
     [selected],
   );
-
-  const selectedIds = useMemo(() => [...selected].sort((a, b) => a - b), [selected]);
 
   const getGroupSelectionState = useCallback(
     (gradeKey: EntryGradeKey): GroupSelectionState => {

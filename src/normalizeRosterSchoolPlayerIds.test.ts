@@ -15,7 +15,7 @@ describe("normalizeRosterSchoolPlayerIds", () => {
         name: "Kim",
         backNumber: "7",
         team: "HOME",
-        position: "Bench",
+        position: "대기",
       },
     ];
     const out = normalizeRosterSchoolPlayerIds(roster, school);

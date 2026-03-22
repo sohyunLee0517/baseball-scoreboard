@@ -80,7 +80,7 @@ export const MyTeamProvider: React.FC<{ children: React.ReactNode }> = ({
           school: null,
           players: [],
           loading: false,
-          error: e instanceof Error ? e.message : "Unknown error",
+          error: e instanceof Error ? e.message : "알 수 없는 오류",
         });
       }
     })();
@@ -98,7 +98,7 @@ export const MyTeamProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useMyTeam = (): MyTeamStoreState => {
   const value = useContext(MyTeamContext);
   if (!value) {
-    throw new Error("useMyTeam must be used within MyTeamProvider");
+    throw new Error("useMyTeam은 MyTeamProvider 안에서만 사용할 수 있습니다.");
   }
   return value;
 };

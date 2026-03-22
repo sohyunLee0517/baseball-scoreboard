@@ -51,7 +51,7 @@ export const OwnerIdProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useOwnerId = (): OwnerIdStore => {
   const value = useContext(OwnerIdContext);
   if (!value) {
-    throw new Error("useOwnerId must be used within OwnerIdProvider");
+    throw new Error("useOwnerId은 OwnerIdProvider 안에서만 사용할 수 있습니다.");
   }
   return value;
 };

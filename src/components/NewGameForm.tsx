@@ -98,7 +98,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
           id: pid,
           name: src?.name ?? "",
           team: myTeamSide,
-          position: src?.position?.trim() || "Bench",
+          position: src?.position?.trim() || "대기",
           backNumber: src?.backNumber?.trim() || String(idx + 1),
           lineupOrder: idx + 1,
         };
@@ -120,7 +120,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to start game. Please check your connection.");
+      alert("경기를 시작하지 못했습니다. 네트워크를 확인해 주세요.");
     } finally {
       setIsSubmitting(false);
     }
@@ -168,7 +168,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
             clipRule="evenodd"
           />
         </svg>
-        {step === 1 ? "Cancel and Return" : "Back"}
+        {step === 1 ? "취소하고 목록으로" : "이전"}
       </button>
 
       <div className="mb-4 flex gap-2 text-xs font-bold text-gray-400">
@@ -182,12 +182,14 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
       <div className="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-gray-100 overflow-hidden">
         <div className="bg-blue-600 p-8 text-white">
           <h2 className="text-2xl font-black tracking-tight mb-2">
-            Initialize New Game
+            새 경기 시작
           </h2>
           <p className="text-blue-100 text-sm opacity-80">
             {step === 1 && "상대 팀 이름과 경기 제목을 입력하세요."}
             {step === 2 && "우리 팀이 홈인지 어웨이인지 선택하세요."}
-            {step === 3 && myTeam.loading && "팀 선수 정보를 불러오는 중입니다."}
+            {step === 3 &&
+              myTeam.loading &&
+              "팀 선수 정보를 불러오는 중입니다."}
             {step === 3 &&
               !myTeam.loading &&
               myRosterPlayerIds.length === 0 &&
@@ -209,8 +211,8 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
           {step === 1 && (
             <>
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
-                  Match Title
+                <label className="block text-xs font-black text-gray-400 tracking-widest mb-2">
+                  경기 제목
                 </label>
                 <input
                   type="text"
@@ -218,11 +220,11 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-gray-50 border-2 border-gray-50 rounded-2xl px-5 py-4 text-lg font-bold outline-none focus:border-blue-500 focus:bg-white transition-all"
-                  placeholder="e.g. 2024 Spring Tournament Final"
+                  placeholder="예: 2024 봄 대회 결승"
                 />
               </div>
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">
+                <label className="block text-xs font-black text-gray-400 tracking-widest mb-2">
                   상대팀 이름
                 </label>
                 <input
@@ -241,7 +243,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                   disabled={!canGoStep2}
                   className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold disabled:opacity-50"
                 >
-                  Next
+                  다음
                 </button>
               </div>
             </>
@@ -263,7 +265,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                         : "border-gray-100 bg-gray-50 text-gray-600"
                     }`}
                   >
-                    홈 (HOME)
+                    홈
                   </button>
                   <button
                     type="button"
@@ -274,7 +276,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                         : "border-gray-100 bg-gray-50 text-gray-600"
                     }`}
                   >
-                    어웨이 (AWAY)
+                    원정
                   </button>
                 </div>
               </div>
@@ -284,14 +286,14 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                   onClick={goBack}
                   className="text-gray-500 font-bold px-4 py-2"
                 >
-                  Back
+                  이전
                 </button>
                 <button
                   type="button"
                   onClick={goNext}
                   className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold"
                 >
-                  Next
+                  다음
                 </button>
               </div>
             </>
@@ -336,16 +338,24 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                       <ul className="space-y-2">
                         {group.playerIds.map((pid) => {
                           const schoolPlayer = schoolPlayerById.get(pid);
-                          const label =
-                            schoolPlayer?.name?.trim() || `#${pid}`;
-                          const meta = [
-                            schoolPlayer?.backNumber
-                              ? `#${schoolPlayer.backNumber}`
-                              : null,
+                          const label = schoolPlayer?.name?.trim() || `#${pid}`;
+                          console.log(
+                            schoolPlayer?.backNumber,
                             schoolPlayer?.position,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ");
+                          );
+                          const meta =
+                            !schoolPlayer?.backNumber && !schoolPlayer?.position
+                              ? undefined
+                              : [
+                                  schoolPlayer?.backNumber
+                                    ? `#${schoolPlayer.backNumber}`
+                                    : null,
+                                  schoolPlayer?.position
+                                    ? `(${schoolPlayer.position})`
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ");
                           return (
                             <li
                               key={pid}
@@ -401,14 +411,17 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                     {entryOrder.orderedIds.map((pid, index) => {
                       const schoolPlayer = schoolPlayerById.get(pid);
                       const label = schoolPlayer?.name?.trim() || `#${pid}`;
-                      const meta = [
-                        schoolPlayer?.backNumber
-                          ? `#${schoolPlayer.backNumber}`
-                          : null,
-                        schoolPlayer?.position,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ");
+                      const meta =
+                        !schoolPlayer?.backNumber && !schoolPlayer?.position
+                          ? undefined
+                          : [
+                              schoolPlayer?.backNumber
+                                ? `#${schoolPlayer.backNumber}`
+                                : null,
+                              schoolPlayer?.position,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ");
                       return (
                         <li
                           key={pid}
@@ -459,16 +472,15 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                   onClick={goBack}
                   className="text-gray-500 font-bold px-4 py-2"
                 >
-                  Back
+                  이전
                 </button>
-                {myRosterPlayerIds.length === 0 ||
-                entrySubStep === "order" ? (
+                {myRosterPlayerIds.length === 0 || entrySubStep === "order" ? (
                   <button
                     type="submit"
                     disabled={isSubmitting || !canSubmit}
                     className="bg-blue-600 text-white rounded-2xl px-8 py-4 text-xl font-black shadow-lg disabled:opacity-50"
                   >
-                    {isSubmitting ? "Initializing..." : "Start Scoring Now"}
+                    {isSubmitting ? "시작하는 중…" : "기록 시작하기"}
                   </button>
                 ) : (
                   <span className="text-xs text-gray-400 max-w-[140px] text-right">
@@ -477,7 +489,7 @@ export const NewGameForm: React.FC<Props> = ({ ownerId }) => {
                 )}
               </div>
               <p className="text-center text-gray-400 text-xs">
-                You can register more players after starting the game.
+                경기 시작 후에도 선수를 더 등록할 수 있습니다.
               </p>
             </>
           )}

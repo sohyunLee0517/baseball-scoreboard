@@ -32,7 +32,7 @@ export const GameList: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm("Delete this game record?")) {
+    if (confirm("이 경기 기록을 삭제할까요?")) {
       await deleteGame(id);
       loadGames();
     }
@@ -111,10 +111,10 @@ export const GameList: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-black text-gray-900 tracking-tight">
-            Scoreboard History
+            경기 기록
           </h2>
           <p className="text-gray-500 text-sm">
-            Manage and track your baseball game statistics.
+            야구 경기 기록을 관리하고 확인합니다.
           </p>
         </div>
         <button
@@ -133,7 +133,7 @@ export const GameList: React.FC = () => {
               clipRule="evenodd"
             />
           </svg>
-          New Game
+          새 경기
         </button>
       </div>
       <div className="grid gap-6">
@@ -148,9 +148,9 @@ export const GameList: React.FC = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
                     <span
-                      className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${game.status === "FINISHED" ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-700 animate-pulse"}`}
+                      className={`px-3 py-1 text-[10px] font-black tracking-widest rounded-full ${game.status === "FINISHED" ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-700 animate-pulse"}`}
                     >
-                      {game.status === "FINISHED" ? "Final" : "Live"}
+                      {game.status === "FINISHED" ? "종료" : "진행 중"}
                     </span>
                     <span className="text-xs font-bold text-gray-300 italic">
                       {new Date(game.date!).toLocaleDateString()}
@@ -184,8 +184,8 @@ export const GameList: React.FC = () => {
 
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
                   <div className="flex-1 text-center px-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      Home
+                    <div className="text-[10px] font-bold text-gray-400 mb-1">
+                      홈
                     </div>
                     <div className="text-lg font-black text-gray-800 truncate">
                       {game.homeTeam}
@@ -203,8 +203,8 @@ export const GameList: React.FC = () => {
                   </div>
 
                   <div className="flex-1 text-center px-2">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">
-                      Away
+                    <div className="text-[10px] font-bold text-gray-400 mb-1">
+                      원정
                     </div>
                     <div className="text-lg font-black text-gray-800 truncate">
                       {game.awayTeam}
@@ -213,10 +213,10 @@ export const GameList: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-50/50 px-6 py-3 border-t border-gray-50 flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase">
-                <span>{game.players?.length || 0} Players Registered</span>
+              <div className="bg-gray-50/50 px-6 py-3 border-t border-gray-50 flex justify-between items-center text-[10px] font-bold text-gray-400">
+                <span>등록 선수 {game.players?.length || 0}명</span>
                 <span className="flex items-center gap-1 text-blue-500">
-                  View Details
+                  상세 보기
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-3 w-3"
@@ -254,16 +254,16 @@ export const GameList: React.FC = () => {
               </svg>
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">
-              No Games Yet
+              아직 경기가 없습니다
             </h3>
             <p className="text-gray-400 text-sm max-w-xs mx-auto mb-8">
-              Start your first game and keep track of every run and hit!
+              첫 경기를 만들고 득점·안타 등 기록을 남겨 보세요.
             </p>
             <button
               onClick={() => navigate("/games/new")}
               className="text-blue-600 font-bold hover:underline"
             >
-              Create New Game Record →
+              새 경기 기록 만들기 →
             </button>
           </div>
         )}

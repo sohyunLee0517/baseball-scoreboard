@@ -30,7 +30,7 @@ export interface SchoolPlayerListItem {
   position?: string;
   backNumber?: string;
   /** 출생 연도 (학년 추정용, 부모 API 필드명이 다르면 매핑) */
-  year?: string;
+  birthYear?: string;
   /** 초등 4~6학년 등 — 있으면 학년 추정보다 우선 */
   grade?: number;
 }
