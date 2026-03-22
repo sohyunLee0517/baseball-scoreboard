@@ -34,6 +34,7 @@ export const PlayerRecordsPage: React.FC = () => {
   const { playerId: playerIdParam } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
   const myTeam = useMyTeam();
+  const { ownerId } = useOwnerId();
 
   const playerIdRaw = (playerIdParam ?? "").trim();
   const playerIdNum = useMemo(() => {
@@ -127,7 +128,6 @@ export const PlayerRecordsPage: React.FC = () => {
   }
 
   const displayName = playerMeta?.name ?? `#${playerIdNum}`;
-  const { ownerId } = useOwnerId();
 
   return (
     <div className="max-w-3xl mx-auto px-4">
