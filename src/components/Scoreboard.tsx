@@ -168,12 +168,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
     setPitchers((prev) =>
       normalizePitcherRecordsSchoolPlayerIds(prev, myTeam.players),
     );
-  }, [
-    initialGame.id,
-    schoolPlayerIdsKey,
-    myTeam.loading,
-    myTeam.players,
-  ]);
+  }, [initialGame.id, schoolPlayerIdsKey, myTeam.loading, myTeam.players]);
 
   const availableSchoolPlayers = useMemo(
     () =>
@@ -183,7 +178,9 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
 
   const availableSchoolPlayersForPitchers = useMemo(
     () =>
-      schoolPlayersForPick.filter((sp) => !pitchers.some((p) => p.id === sp.id)),
+      schoolPlayersForPick.filter(
+        (sp) => !pitchers.some((p) => p.id === sp.id),
+      ),
     [schoolPlayersForPick, pitchers],
   );
 
@@ -364,7 +361,6 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
               clipRule="evenodd"
             />
           </svg>
-          경기 목록
         </button>
         <div className="text-center">
           <h2 className="text-2xl font-black text-gray-800 tracking-tight">
@@ -380,7 +376,7 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
           className="bg-blue-600 text-white px-5 py-2 rounded-full font-bold hover:bg-blue-700 disabled:opacity-50 transition shadow-lg shadow-blue-100 flex items-center gap-2"
         >
           {isSaving ? (
-            "저장 중…"
+            "…"
           ) : (
             <>
               <svg
@@ -395,7 +391,6 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                   clipRule="evenodd"
                 />
               </svg>
-              전체 저장
             </>
           )}
         </button>
@@ -881,7 +876,9 @@ export const Scoreboard: React.FC<Props> = ({ game: initialGame, onBack }) => {
                       <button
                         type="button"
                         onClick={() =>
-                          setPitchers((prev) => prev.filter((_, i) => i !== idx))
+                          setPitchers((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
                         }
                         className="text-gray-300 hover:text-red-500 transition shrink-0 inline-flex"
                         aria-label="투수 삭제"

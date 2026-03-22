@@ -63,7 +63,7 @@ function App() {
         </Routes>
       </main>
 
-      <footer className="max-w-6xl mx-auto px-4 py-12 border-t border-slate-200">
+      {/* <footer className="max-w-6xl mx-auto px-4 py-12 border-t border-slate-200">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-slate-400 text-xs font-bold tracking-widest">
             © 2026 야구 기록 플랫폼
@@ -80,7 +80,7 @@ function App() {
             </span>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }

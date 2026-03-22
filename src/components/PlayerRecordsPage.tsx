@@ -25,7 +25,9 @@ function findPitcher(game: Game, playerId: number): PitcherRecord | undefined {
 }
 
 function gamesWithPlayer(games: Game[], playerId: number): Game[] {
-  return games.filter((g) => findBatter(g, playerId) || findPitcher(g, playerId));
+  return games.filter(
+    (g) => findBatter(g, playerId) || findPitcher(g, playerId),
+  );
 }
 
 export const PlayerRecordsPage: React.FC = () => {
@@ -110,7 +112,7 @@ export const PlayerRecordsPage: React.FC = () => {
         onClick={() => navigate("/")}
         className="mb-6 text-sm text-slate-500 hover:text-blue-600 flex items-center gap-1"
       >
-        ← 경기 목록
+        ←
       </button>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-8">
@@ -140,11 +142,15 @@ export const PlayerRecordsPage: React.FC = () => {
               <li key={game.id ?? game.title}>
                 <button
                   type="button"
-                  onClick={() => game.id != null && navigate(`/games/${game.id}`)}
+                  onClick={() =>
+                    game.id != null && navigate(`/games/${game.id}`)
+                  }
                   className="w-full text-left rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md transition-all"
                 >
                   <div className="flex flex-wrap justify-between gap-2 mb-3">
-                    <span className="font-bold text-slate-900">{game.title}</span>
+                    <span className="font-bold text-slate-900">
+                      {game.title}
+                    </span>
                     <span className="text-xs text-slate-400">
                       {game.date
                         ? new Date(game.date).toLocaleDateString("ko-KR")

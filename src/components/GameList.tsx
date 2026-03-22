@@ -38,6 +38,18 @@ export const GameList: React.FC = () => {
     }
   };
 
+  const schoolPath =
+    myTeam.school != null
+      ? `/school/${encodeURIComponent(myTeam.school.name.trim())}`
+      : null;
+
+  const goToSchoolInShell = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!schoolPath) return;
+    e.preventDefault();
+    const win = window.parent !== window ? window.parent : window;
+    win.location.assign(schoolPath);
+  };
+
   if (loading)
     return (
       <div className="flex justify-center items-center py-20">
@@ -51,11 +63,10 @@ export const GameList: React.FC = () => {
         <div className="text-xs text-gray-500 mb-2">
           {myTeam.loading ? (
             "학교 정보 로딩중..."
-          ) : myTeam.school ? (
+          ) : myTeam.school && schoolPath ? (
             <a
-              href={myTeam.school.url || "#"}
-              target="_blank"
-              rel="noreferrer"
+              href={schoolPath}
+              onClick={goToSchoolInShell}
               className="text-blue-600 hover:underline font-bold"
             >
               {myTeam.school.name}
@@ -73,15 +84,13 @@ export const GameList: React.FC = () => {
         </div>
         {!myTeam.loading && myTeam.players.length > 0 && (
           <div className="mt-3 pt-3 border-t border-slate-100">
-            <div className="mb-2">
-              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                아래 선수를 누르면, 해당 선수로 등록된 경기의{" "}
-                <span className="text-slate-600 font-semibold">
-                  개인 기록(타격·투구)
-                </span>
-                를 볼 수 있습니다.
-              </p>
-            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed mb-2">
+              아래 선수를 누르면, 해당 선수로 등록된 경기의{" "}
+              <span className="text-slate-600 font-semibold">
+                개인 기록(타격·투구)
+              </span>
+              를 볼 수 있습니다.
+            </p>
             <ul className="flex flex-wrap gap-2 text-xs text-slate-700">
               {myTeam.players.map((p, idx) => {
                 const schoolId = parseSchoolPlayerId(p);
@@ -113,9 +122,6 @@ export const GameList: React.FC = () => {
           <h2 className="text-3xl font-black text-gray-900 tracking-tight">
             경기 기록
           </h2>
-          <p className="text-gray-500 text-sm">
-            야구 경기 기록을 관리하고 확인합니다.
-          </p>
         </div>
         <button
           onClick={() => navigate("/games/new")}
@@ -133,7 +139,6 @@ export const GameList: React.FC = () => {
               clipRule="evenodd"
             />
           </svg>
-          새 경기
         </button>
       </div>
       <div className="grid gap-6">
@@ -146,15 +151,13 @@ export const GameList: React.FC = () => {
             >
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`px-3 py-1 text-[10px] font-black tracking-widest rounded-full ${game.status === "FINISHED" ? "bg-gray-100 text-gray-500" : "bg-green-100 text-green-700 animate-pulse"}`}
-                    >
-                      {game.status === "FINISHED" ? "종료" : "진행 중"}
-                    </span>
+                  <div className="flex flex-col items-start">
                     <span className="text-xs font-bold text-gray-300 italic">
                       {new Date(game.date!).toLocaleDateString()}
                     </span>
+                    <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                      {game.title}
+                    </h3>
                   </div>
                   <button
                     onClick={(e) => {
@@ -177,10 +180,6 @@ export const GameList: React.FC = () => {
                     </svg>
                   </button>
                 </div>
-
-                <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-6">
-                  {game.title}
-                </h3>
 
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
                   <div className="flex-1 text-center px-2">
@@ -213,8 +212,7 @@ export const GameList: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-50/50 px-6 py-3 border-t border-gray-50 flex justify-between items-center text-[10px] font-bold text-gray-400">
-                <span>등록 선수 {game.players?.length || 0}명</span>
+              <div className="bg-gray-50/50 px-6 py-3 border-t border-gray-50 flex justify-end items-center text-[10px] font-bold text-gray-400">
                 <span className="flex items-center gap-1 text-blue-500">
                   상세 보기
                   <svg
