@@ -127,17 +127,10 @@ export const PlayerRecordsPage: React.FC = () => {
   }
 
   const displayName = playerMeta?.name ?? `#${playerIdNum}`;
+  const { ownerId } = useOwnerId();
 
   return (
     <div className="max-w-3xl mx-auto px-4">
-      <button
-        type="button"
-        onClick={() => navigate("/")}
-        className="mb-6 text-sm text-slate-500 hover:text-blue-600 flex items-center gap-1"
-      >
-        ←
-      </button>
-
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-8">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">
           {displayName}
@@ -147,7 +140,6 @@ export const PlayerRecordsPage: React.FC = () => {
             </span>
           ) : null}
         </h1>
-        <p className="text-sm text-slate-500 mt-1">등록된 경기별 개인 기록</p>
       </div>
 
       {relevantGames.length === 0 ? (
@@ -166,7 +158,7 @@ export const PlayerRecordsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const { ownerId } = useOwnerId();
+                    console.log(ownerId);
                     if (!ownerId) return;
                     game.id != null && navigate(`/games/${game.id}`);
                   }}

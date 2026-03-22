@@ -66,7 +66,7 @@ function App() {
         </div>
       </header>
 
-      <main className="py-12">
+      <main className="py-[1em]">
         <Suspense
           fallback={
             <div className="flex justify-center items-center py-20">

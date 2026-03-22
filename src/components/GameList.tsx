@@ -122,15 +122,15 @@ export const GameList: React.FC = () => {
           </div>
         )}
       </div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">
+      <div className="flex flex-row flex-nowrap justify-between items-center mb-8 gap-3 sm:gap-4">
+        <div className="min-w-0 shrink">
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
             경기 기록
           </h2>
         </div>
         <button
           onClick={() => navigate("/games/new")}
-          className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all flex items-center gap-2"
+          className="shrink-0 bg-blue-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-blue-300 transition-all flex items-center gap-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
