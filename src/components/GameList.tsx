@@ -16,11 +16,16 @@ export const GameList: React.FC = () => {
   const myTeam = useMyTeam();
 
   useEffect(() => {
-    loadGames();
+    void loadGames();
   }, [ownerId]);
 
   const loadGames = async () => {
-    if (!ownerId) return;
+    if (!ownerId) {
+      setGames([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
       const data = await getGames(ownerId);
       setGames(data);

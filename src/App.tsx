@@ -1,9 +1,21 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { GameList } from "./components/GameList";
-import { NewGameForm } from "./components/NewGameForm";
-import { PlayerRecordsPage } from "./components/PlayerRecordsPage";
-import { ScoreboardPage } from "./components/ScoreboardPage";
 import { useOwnerId } from "./ownerId-store";
+
+const NewGameForm = lazy(() =>
+  import("./components/NewGameForm").then((m) => ({ default: m.NewGameForm })),
+);
+const ScoreboardPage = lazy(() =>
+  import("./components/ScoreboardPage").then((m) => ({
+    default: m.ScoreboardPage,
+  })),
+);
+const PlayerRecordsPage = lazy(() =>
+  import("./components/PlayerRecordsPage").then((m) => ({
+    default: m.PlayerRecordsPage,
+  })),
+);
 
 function App() {
   const { ownerId } = useOwnerId();
@@ -53,16 +65,24 @@ function App() {
       </header>
 
       <main className="py-12">
-        <Routes>
-          <Route path="/" element={<GameList />} />
-          <Route
-            path="/games/new"
-            element={<NewGameForm ownerId={ownerId} />}
-          />
-          <Route path="/games/:gameId" element={<ScoreboardPage />} />
-          <Route path="/players/:playerId" element={<PlayerRecordsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense
+          fallback={
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<GameList />} />
+            <Route
+              path="/games/new"
+              element={<NewGameForm ownerId={ownerId} />}
+            />
+            <Route path="/games/:gameId" element={<ScoreboardPage />} />
+            <Route path="/players/:playerId" element={<PlayerRecordsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </main>
 
       {/* <footer className="max-w-6xl mx-auto px-4 py-12 border-t border-slate-200">

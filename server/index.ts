@@ -193,6 +193,30 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
   };
 }
 
+/** 목록 전용: `Match` 한 번만 조회 (경기당 N회 `fetchGame` 방지) */
+async function fetchGameSummariesForOwner(pool: pg.Pool, ownerId: string) {
+  const { rows } = await pool.query(
+    `SELECT id, "ownerId", title, status, "homeTeamName", "awayTeamName", "homeScore", "awayScore", date, "createdAt"
+     FROM "Match" WHERE "ownerId" = $1 ORDER BY id DESC`,
+    [ownerId],
+  );
+  return (rows as Record<string, unknown>[]).map((m) => ({
+    id: m.id,
+    ownerId: m.ownerId,
+    title: m.title,
+    status: m.status,
+    homeTeam: m.homeTeamName,
+    awayTeam: m.awayTeamName,
+    homeScore: m.homeScore,
+    awayScore: m.awayScore,
+    date: m.date,
+    createdAt: m.createdAt,
+    players: [],
+    pitchers: [],
+    innings: [],
+  }));
+}
+
 // GET /api/scoreboard/game?ownerId=xxx
 function queryStringParam(
   q: Record<string, unknown> | undefined,
@@ -256,14 +280,8 @@ const listGamesHandler: express.RequestHandler = async (req, res) => {
     res.status(400).json({ message: "ownerId가 필요합니다." });
     return;
   }
-  const { rows } = await pool.query(
-    `SELECT id FROM "Match" WHERE "ownerId" = $1 ORDER BY id DESC`,
-    [ownerId],
-  );
-  const games = await Promise.all(
-    (rows as { id: number }[]).map((r) => fetchGame(pool, r.id)),
-  );
-  res.json(games.filter(Boolean));
+  const games = await fetchGameSummariesForOwner(pool, ownerId);
+  res.json(games);
 };
 
 app.get("/api/scoreboard/game", listGamesHandler);

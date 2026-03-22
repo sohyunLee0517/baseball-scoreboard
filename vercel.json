@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/scoreboard/(.*)",
+      "destination": "/scoreboard/index.html"
+    }
+  ]
+}
