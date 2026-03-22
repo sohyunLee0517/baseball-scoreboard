@@ -130,8 +130,13 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
       }
     }
 
+    const rawSchoolId = String(p.playerId ?? "").trim();
+    const schoolIdNum = rawSchoolId
+      ? Number.parseInt(rawSchoolId, 10)
+      : NaN;
+
     return {
-      id: p.id,
+      id: Number.isFinite(schoolIdNum) ? schoolIdNum : (p.id as number),
       name: p.name,
       team: p.team,
       position: p.position || "",
@@ -189,8 +194,64 @@ async function fetchGame(client: pg.PoolClient | pg.Pool, id: number) {
 }
 
 // GET /api/scoreboard/game?ownerId=xxx
-app.get("/api/scoreboard/game", async (req, res) => {
-  const ownerId = typeof req.query.ownerId === "string" ? req.query.ownerId : "";
+function queryStringParam(
+  q: Record<string, unknown> | undefined,
+  key: string,
+): string {
+  if (!q) return "";
+  const v = q[key];
+  if (typeof v === "string") return v.trim();
+  if (Array.isArray(v) && typeof v[0] === "string") return v[0].trim();
+  return "";
+}
+
+/** 학교 선수 ID로 경기 목록 (공개, ownerId 불필요) */
+async function sendGamesForSchoolPlayerId(
+  res: express.Response,
+  schoolPlayerId: string,
+) {
+  const id = schoolPlayerId.trim();
+  if (!id) {
+    res.status(400).json({ message: "playerId가 필요합니다." });
+    return;
+  }
+  const { rows } = await pool.query(
+    `SELECT id FROM (
+      SELECT DISTINCT m.id FROM "Match" m
+      INNER JOIN "MatchPlayer" mp ON mp."matchId" = m.id
+      WHERE mp."playerId" = $1
+      UNION
+      SELECT DISTINCT m.id FROM "Match" m
+      INNER JOIN "PitchRecord" pr ON pr."matchId" = m.id
+      WHERE pr."playerId" = $1
+    ) sub ORDER BY id DESC`,
+    [id],
+  );
+  const games = await Promise.all(
+    (rows as { id: number }[]).map((r) => fetchGame(pool, r.id)),
+  );
+  res.json(games.filter(Boolean));
+}
+
+// 선수 개인 기록 (공개) — `/api/scoreboard/game` 프록시 뒤에서도 도달하도록 game 아래에 둠
+app.get("/api/scoreboard/game/player/:playerId/games", async (req, res) => {
+  const raw = req.params.playerId ?? "";
+  const playerId = decodeURIComponent(raw);
+  await sendGamesForSchoolPlayerId(res, playerId);
+});
+
+// 별칭 (프록시가 `/api/scoreboard` 전체를 넘기는 환경)
+app.get("/api/scoreboard/player/:playerId/games", async (req, res) => {
+  const raw = req.params.playerId ?? "";
+  const playerId = decodeURIComponent(raw);
+  await sendGamesForSchoolPlayerId(res, playerId);
+});
+
+const listGamesHandler: express.RequestHandler = async (req, res) => {
+  const ownerId = queryStringParam(
+    req.query as Record<string, unknown>,
+    "ownerId",
+  );
   if (!ownerId) {
     res.status(400).json({ message: "ownerId가 필요합니다." });
     return;
@@ -203,7 +264,10 @@ app.get("/api/scoreboard/game", async (req, res) => {
     (rows as { id: number }[]).map((r) => fetchGame(pool, r.id)),
   );
   res.json(games.filter(Boolean));
-});
+};
+
+app.get("/api/scoreboard/game", listGamesHandler);
+app.get("/api/scoreboard/game/", listGamesHandler);
 
 // GET /api/scoreboard/game/:id
 app.get("/api/scoreboard/game/:id", async (req, res) => {

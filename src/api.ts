@@ -13,8 +13,23 @@ const api = axios.create({
 });
 
 export const getGames = async (ownerId: string): Promise<Game[]> => {
-  const response = await api.get(`?ownerId=${ownerId}`);
+  const response = await api.get("", {
+    params: { ownerId },
+  });
   return response.data as Game[];
+};
+
+/**
+ * 학교 선수 ID 기준 경기 목록 (공개).
+ * `baseURL`이 `/api/scoreboard/game` 이므로 `game/player/.../games` 로 붙여
+ * `/api/scoreboard/game/player/:id/games` 만 호출 — 프록시가 `.../game` 만 넘길 때도 동작.
+ */
+export const getGamesByPlayerId = async (
+  playerId: string,
+): Promise<Game[]> => {
+  const pid = encodeURIComponent(playerId.trim());
+  const response = await api.get<Game[]>(`player/${pid}/games`);
+  return response.data;
 };
 
 export const getGame = async (id: number): Promise<Game> => {

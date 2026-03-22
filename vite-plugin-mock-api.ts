@@ -40,16 +40,54 @@ function parseJsonBody(raw: string): Record<string, unknown> {
   }
 }
 
+function gamesMatchingPlayerId(playerIdStr: string) {
+  const pid = Number.parseInt(playerIdStr, 10)
+  if (!Number.isFinite(pid)) return []
+  return games.filter((g) => {
+    const G = g as {
+      players?: { id?: number }[]
+      pitchers?: { id?: number }[]
+    }
+    return (
+      (G.players ?? []).some((p) => p.id === pid) ||
+      (G.pitchers ?? []).some((p) => p.id === pid)
+    )
+  })
+}
+
 export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
   return async (req, res, next) => {
     const url = req.url || ''
-    if (!url.startsWith('/api/scoreboard/game')) {
+    if (!url.startsWith('/api/scoreboard/')) {
       return next()
     }
 
     const { pathname: rawPath, query } = parseUrl(url, true)
     const pathname = rawPath?.replace(/\/$/, '') || ''
     const method = req.method || 'GET'
+
+    // GET /api/scoreboard/player/:playerId/games (개인 기록 페이지 전용)
+    const playerGames = pathname.match(
+      /^\/api\/scoreboard\/player\/([^/]+)\/games$/,
+    )
+    if (method === 'GET' && playerGames) {
+      const playerId = decodeURIComponent(playerGames[1] ?? '')
+      return json(res, 200, gamesMatchingPlayerId(playerId))
+    }
+
+    // GET /api/scoreboard/game/player/:playerId/games (프록시·baseURL과 동일 prefix)
+    const nestedPlayerGames = pathname.match(
+      /^\/api\/scoreboard\/game\/player\/([^/]+)\/games$/,
+    )
+    if (method === 'GET' && nestedPlayerGames) {
+      const playerId = decodeURIComponent(nestedPlayerGames[1] ?? '')
+      return json(res, 200, gamesMatchingPlayerId(playerId))
+    }
+
+    if (!url.startsWith('/api/scoreboard/game')) {
+      return next()
+    }
+
     const idFromPath = pathname.match(/^\/api\/scoreboard\/game\/(\d+)$/)
     const id = idFromPath ? Number(idFromPath[1]) : null
 
@@ -57,7 +95,9 @@ export function mockScoreboardApiMiddleware(): Connect.NextHandleFunction {
       // GET /api/scoreboard/game?ownerId=...
       if (method === 'GET' && id === null) {
         const ownerId = typeof query.ownerId === 'string' ? query.ownerId : ''
-        const list = games.filter((g) => (g as { ownerId?: string }).ownerId === ownerId)
+        const list = games.filter(
+          (g) => (g as { ownerId?: string }).ownerId === ownerId,
+        )
         return json(res, 200, list)
       }
 

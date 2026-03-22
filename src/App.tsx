@@ -36,10 +36,12 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-400">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-              연결: {ownerId}
-            </div>
+            {ownerId ? (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-400">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                연결: {ownerId}
+              </div>
+            ) : null}
             <a
               href="/"
               className="text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors"

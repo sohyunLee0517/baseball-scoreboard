@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getGames } from "../api";
+import { getGamesByPlayerId } from "../api";
 import type { Game, PitcherRecord, Player } from "../types";
-import { useOwnerId } from "../ownerId-store";
 import { useMyTeam } from "../my-team-store";
 import { parseSchoolPlayerId } from "../school-api";
 import { batResultCodeToLabelKo } from "../constants/batResult";
 import { outsToDisplayString } from "../utils/pitchingInnings";
+import { useOwnerId } from "../ownerId-store";
 
 function summarizeInningRecords(records?: string[]): string {
   return (records ?? [])
@@ -33,34 +33,56 @@ function gamesWithPlayer(games: Game[], playerId: number): Game[] {
 export const PlayerRecordsPage: React.FC = () => {
   const { playerId: playerIdParam } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
-  const { ownerId } = useOwnerId();
   const myTeam = useMyTeam();
 
-  const playerId = useMemo(() => {
-    const n = Number.parseInt(playerIdParam ?? "", 10);
+  const playerIdRaw = (playerIdParam ?? "").trim();
+  const playerIdNum = useMemo(() => {
+    if (!/^\d+$/.test(playerIdRaw)) return NaN;
+    const n = Number(playerIdRaw);
     return Number.isFinite(n) ? n : NaN;
-  }, [playerIdParam]);
+  }, [playerIdRaw]);
 
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
 
   const playerMeta = useMemo(() => {
-    const sp = myTeam.players.find((p) => parseSchoolPlayerId(p) === playerId);
-    if (!sp) return null;
-    return {
-      name: sp.name?.trim() || `#${playerId}`,
-      backNumber: sp.backNumber?.trim() ?? "",
-    };
-  }, [myTeam.players, playerId]);
+    if (!Number.isFinite(playerIdNum)) return null;
+    const fromSchool = myTeam.players.find(
+      (p) => parseSchoolPlayerId(p) === playerIdNum,
+    );
+    if (fromSchool) {
+      return {
+        name: fromSchool.name?.trim() || `#${playerIdNum}`,
+        backNumber: fromSchool.backNumber?.trim() ?? "",
+      };
+    }
+    for (const g of games) {
+      const bat = (g.players ?? []).find((p) => p.id === playerIdNum);
+      if (bat) {
+        return {
+          name: bat.name?.trim() || `#${playerIdNum}`,
+          backNumber: bat.backNumber?.trim() ?? "",
+        };
+      }
+      const pit = (g.pitchers ?? []).find((p) => p.id === playerIdNum);
+      if (pit) {
+        return {
+          name: pit.name?.trim() || `#${playerIdNum}`,
+          backNumber: pit.backNumber?.trim() ?? "",
+        };
+      }
+    }
+    return null;
+  }, [myTeam.players, games, playerIdNum]);
 
   useEffect(() => {
-    if (!ownerId || !Number.isFinite(playerId)) {
+    if (!/^\d+$/.test(playerIdRaw)) {
       setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    getGames(ownerId)
+    void getGamesByPlayerId(playerIdRaw)
       .then((data) => {
         if (!cancelled) setGames(data);
       })
@@ -73,14 +95,15 @@ export const PlayerRecordsPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [ownerId, playerId]);
+  }, [playerIdRaw]);
 
   const relevantGames = useMemo(
-    () => (Number.isFinite(playerId) ? gamesWithPlayer(games, playerId) : []),
-    [games, playerId],
+    () =>
+      Number.isFinite(playerIdNum) ? gamesWithPlayer(games, playerIdNum) : [],
+    [games, playerIdNum],
   );
 
-  if (!Number.isFinite(playerId)) {
+  if (!Number.isFinite(playerIdNum)) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-600">
         <p className="font-bold mb-4">선수 정보를 찾을 수 없습니다.</p>
@@ -103,7 +126,7 @@ export const PlayerRecordsPage: React.FC = () => {
     );
   }
 
-  const displayName = playerMeta?.name ?? `#${playerId}`;
+  const displayName = playerMeta?.name ?? `#${playerIdNum}`;
 
   return (
     <div className="max-w-3xl mx-auto px-4">
@@ -135,16 +158,18 @@ export const PlayerRecordsPage: React.FC = () => {
       ) : (
         <ul className="space-y-4">
           {relevantGames.map((game) => {
-            const batter = findBatter(game, playerId);
-            const pitcher = findPitcher(game, playerId);
+            const batter = findBatter(game, playerIdNum);
+            const pitcher = findPitcher(game, playerIdNum);
             const summary = summarizeInningRecords(batter?.inningRecords);
             return (
               <li key={game.id ?? game.title}>
                 <button
                   type="button"
-                  onClick={() =>
-                    game.id != null && navigate(`/games/${game.id}`)
-                  }
+                  onClick={() => {
+                    const { ownerId } = useOwnerId();
+                    if (!ownerId) return;
+                    game.id != null && navigate(`/games/${game.id}`);
+                  }}
                   className="w-full text-left rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md transition-all"
                 >
                   <div className="flex flex-wrap justify-between gap-2 mb-3">
