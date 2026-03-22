@@ -1,8 +1,16 @@
 {
   "rewrites": [
     {
+      "source": "/scoreboard/assets/(.*)",
+      "destination": "/assets/$1"
+    },
+    {
       "source": "/scoreboard/(.*)",
-      "destination": "/scoreboard/index.html"
+      "destination": "/index.html"
+    },
+    {
+      "source": "/scoreboard",
+      "destination": "/index.html"
     }
   ]
 }
