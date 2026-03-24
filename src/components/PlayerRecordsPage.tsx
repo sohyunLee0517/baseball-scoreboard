@@ -33,20 +33,10 @@ function gamesWithPlayer(games: Game[], playerId: number): Game[] {
 const schoolProfileLinkClassName =
   "inline-flex max-w-full items-center rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-blue-300/80 hover:bg-blue-50/80 hover:text-blue-800";
 
-/** 상세 목록: 본명(realName) 제외 · 제목에 쓰인 name·등번호는 중복 생략 */
-const PROFILE_DETAIL_SKIP = new Set([
-  "realName",
-  "realname",
-  "name",
-  "backNumber",
-  "id",
-]);
+/** 프로필 상세 블록에 노출할 API 필드 — 소속 이력·소속팀만 */
+const PROFILE_DETAIL_ALLOWED_KEYS = new Set(["history", "finalSchool"]);
 
-function isRealNameField(key: string): boolean {
-  return key === "realName" || key.toLowerCase() === "realname";
-}
-
-/** `path` 항목 한 개 → 표시·링크에 쓸 학교명 (객체는 `team`, 문자열은 그대로) */
+/** `path` / `history` 항목 한 개 → 표시·링크에 쓸 학교명 (객체는 `team`, 문자열은 그대로) */
 function pathEntryToSchoolName(entry: unknown): string | null {
   if (typeof entry === "string") {
     const t = entry.trim();
@@ -90,22 +80,9 @@ function parsePathSchools(raw: unknown): string[] {
 }
 
 function profileFieldLabelKo(key: string): string {
-  const labels: Record<string, string> = {
-    id: "선수 ID",
-    position: "포지션",
-    schoolName: "학교명",
-    school: "학교",
-    history: "소속 이력",
-    path: "학력",
-    finalSchool: "소속팀",
-    grade: "학년",
-    birthYear: "출생연도",
-    height: "키",
-    weight: "몸무게",
-    batHand: "타격",
-    throwHand: "투구",
-  };
-  return labels[key] ?? key;
+  if (key === "history") return "소속이력";
+  if (key === "finalSchool") return "소속팀";
+  return key;
 }
 
 function formatProfileValue(value: unknown): string | null {
@@ -132,26 +109,13 @@ function formatProfileValue(value: unknown): string | null {
   return String(value);
 }
 
-const PROFILE_KEY_ORDER = [
-  "position",
-  "schoolName",
-  "school",
-  "finalSchool",
-  "history",
-  "path",
-  "grade",
-  "birthYear",
-  "height",
-  "weight",
-  "batHand",
-  "throwHand",
-];
+const PROFILE_KEY_ORDER = ["finalSchool", "history"];
 
 type ProfileDetailRow = {
   key: string;
   label: string;
   value: string;
-  /** `path` 필드 — 부모 앱 `/school/:name` 링크용 */
+  /** `history` — 부모 앱 `/school/:name` 링크용 */
   pathSchools?: string[];
 };
 
@@ -160,9 +124,8 @@ function profileDetailRowsFromApi(
 ): ProfileDetailRow[] {
   const raw: ProfileDetailRow[] = [];
   for (const [k, v] of Object.entries(profile)) {
-    if (isRealNameField(k)) continue;
-    if (PROFILE_DETAIL_SKIP.has(k)) continue;
-    if (k === "history" || k === "path") {
+    if (!PROFILE_DETAIL_ALLOWED_KEYS.has(k)) continue;
+    if (k === "history") {
       const schools = parsePathSchools(v);
       if (schools.length === 0) continue;
       /** 부모 API는 최신 소속이 앞에 오는 경우가 있어, 이력은 과거 → 현재 순으로 표시 */
@@ -175,9 +138,11 @@ function profileDetailRowsFromApi(
       });
       continue;
     }
-    const value = formatProfileValue(v);
-    if (value === null) continue;
-    raw.push({ key: k, label: profileFieldLabelKo(k), value });
+    if (k === "finalSchool") {
+      const value = formatProfileValue(v);
+      if (value === null) continue;
+      raw.push({ key: k, label: profileFieldLabelKo(k), value });
+    }
   }
   raw.sort((a, b) => {
     const ia = PROFILE_KEY_ORDER.indexOf(a.key);
@@ -193,19 +158,9 @@ function profileDetailRowsFromApi(
 }
 
 function profileDetailRowsFromGames(
-  games: Game[],
-  playerIdNum: number,
+  _games: Game[],
+  _playerIdNum: number,
 ): ProfileDetailRow[] {
-  for (const g of games) {
-    const bat = findBatter(g, playerIdNum);
-    if (bat?.position?.trim()) {
-      return [{ key: "position", label: "포지션", value: bat.position.trim() }];
-    }
-    const pit = findPitcher(g, playerIdNum);
-    if (pit?.position?.trim()) {
-      return [{ key: "position", label: "포지션", value: pit.position.trim() }];
-    }
-  }
   return [];
 }
 
@@ -349,17 +304,11 @@ export const PlayerRecordsPage: React.FC = () => {
               {profileDetailRows.map((row) => (
                 <div
                   key={row.key}
-                  className={
-                    row.key === "path"
-                      ? "min-w-0"
-                      : "grid grid-cols-1 gap-x-8 sm:grid-cols-[minmax(7rem,auto)_1fr]"
-                  }
+                  className="grid grid-cols-1 gap-x-8 sm:grid-cols-[minmax(7rem,auto)_1fr]"
                 >
-                  {row.key === "path" ? null : (
-                    <div className="text-slate-500 font-medium sm:pt-0.5">
-                      {row.label}
-                    </div>
-                  )}
+                  <div className="text-slate-500 font-medium sm:pt-0.5">
+                    {row.label}
+                  </div>
                   <div className="min-w-0 break-words text-slate-800">
                     {row.pathSchools && row.pathSchools.length > 0 ? (
                       <span className="inline-flex flex-wrap items-center gap-y-2 gap-x-0">
